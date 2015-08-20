@@ -1,0 +1,44 @@
+{
+  "name": "amqp-connection-manager",
+  "version": "1.0.0",
+  "description": "Auto-reconnect and round robin support for amqplib.",
+  "main": "lib/index.js",
+  "dependencies": {
+    "es6-promise": "^3.0.2",
+    "lodash": "^3.10.1",
+    "promise-breaker": "^2.0.3",
+    "when": "^3.7.3"
+  },
+  "peerDependencies": {
+    "amqplib": "*"
+  },
+  "devDependencies": {
+    "chai-string": "^1.1.2",
+    "coffee-script": "^1.9.3",
+    "proxyquire": "^1.7.0",
+    "sinon": "^1.16.1"
+  },
+  "scripts": {
+    "prepublish": "npm run build && npm test",
+    "build": "coffee -c -o lib src",
+    "clean": "rm -rf lib coverage",
+    "distclean": "npm run clean && rm -rf node_modules",
+    "test": "mocha && istanbul report text-summary lcov"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benbria/node-amqp-connection-manager"
+  },
+  "keywords": [
+    "amqp",
+    "rabbitmq",
+    "cluster",
+    "amqplib"
+  ],
+  "author": "Jason Walton <dev@lucid.thedreaming.org> (https://github.com/jwalton)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/benbria/node-amqp-connection-manager/issues"
+  },
+  "homepage": "https://github.com/benbria/node-amqp-connection-manager"
+}
