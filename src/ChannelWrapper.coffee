@@ -176,7 +176,7 @@ class ChannelWrapper extends EventEmitter
                 # Something went wrong trying to send this message - could be JSON.stringify failed, could be the
                 # broker rejected the message.  Either way, reject it back
                 @_messages.shift()
-                message?.reject err
+                message.reject err
         )
         .then =>
             # Send some more!

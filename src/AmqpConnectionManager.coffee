@@ -11,8 +11,8 @@ HEARTBEAT_IN_SECONDS = 5
 
 #
 # Events:
-#     `connect({connection, url})` - Emitted whenever we connect to a broker.
-#     `disconnect({err})` - Emitted whenever we disconnect from a broker.
+# * `connect({connection, url})` - Emitted whenever we connect to a broker.
+# * `disconnect({err})` - Emitted whenever we disconnect from a broker.
 #
 class AmqpConnectionManager extends EventEmitter
     # Create a new AmqplibConnectionManager.

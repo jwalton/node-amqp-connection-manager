@@ -8,14 +8,14 @@ Features:
 
 * Automatically reconnect when your amqplib broker dies in a fire.
 * Round-robin connections between multiple brokers in a cluster.
-* Presever messages sent while the broken is unavailable.
+* If messages are sent while the broker is unavailable, queues messages in memory until we reconnect.
 * Supports both promises and callbacks (using [promise-breaker](https://github.com/jwalton/node-promise-breaker))
 * Very un-opinionated library - a thin wrapper around amqplib.
 
 Installation:
 -------------
 
-    npm install --save amqp-connection-manager
+    npm install --save amqplib amqp-connection-manager
 
 Basics:
 -------
@@ -25,14 +25,21 @@ asserting that various queues or exchanges exist, or binding to queues), and the
 you never touch that stuff again.
 
 amqp-connection-manager will reconnect to a new broker whenever the broker it is currently connected to dies.  When you
-ask amqp-connection-manager for a channel, you specify a `setup` function to run; the setup function will be run every
-time amqp-connection-manager reconnects.
+ask amqp-connection-manager for a channel, you specify one or more `setup` functions to run; the setup functions will
+be run every time amqp-connection-manager reconnects, to make sure your channel and broker are in a sane state.
 
-For example:
+Before we get into an example, note this example is written using Promises, however much like amqplib, any
+function which returns a Promise will also accept a callback as an optional parameter.
+
+Here's the example:
 
     var amqp = require('amqp-connection-manager');
 
+    // Create a new connection manager
     var connection = amqp.connect(['amqp://localhost'], {json: true});
+
+    // Ask the connection manager for a ChannelWrapper.  Specify a setup function to run every time we reconnect
+    // to the broker.
     var channelWrapper = connection.createChannel({
         setup: function(channel) {
             // `channel` here is a regular amqplib `ConfirmChannel`.
@@ -40,6 +47,9 @@ For example:
         }
     });
 
+    // Send some messages to the queue.  If we're not currently connected, these will be queued up in memory
+    // until we connect.  Note that `sendToQueue()` and `publish()` return a Promise which is fulfilled or rejected
+    // when the message is actually sent (or not sent.)
     channelWrapper.sendToQueue('rxQueueName', {hello: 'world'})
     .then(function() {
       return console.log("Message was sent!  Hooray!");
@@ -47,6 +57,24 @@ For example:
       return console.log("Message was rejected...  Boo!");
     });
 
+Sometimes it's handy to modify a channel at run time.  For example, suppose you have a channel that's listening to
+one kind of message, and you decide you now also want to listen to some other kind of message.  This can be done
+by adding a new setup function to an existing ChannelWrapper:
+
+    channelWrapper.addSetup(function(channel) {
+        Promise.all([
+            channel.assertQueue("my-queue", { exclusive: true, autoDelete: true }),
+            channel.bindQueue("my-queue", "my-exchange", "create"),
+            channel.consume("my-queue", handleMessage)
+        ])
+    });
+
+`addSetup()` returns a Promise which resolves when the setup function is finished (or immediately, if the underlying
+connection is not currently connected to a broker.)  There is also a `removeSetup(setup, teardown)` which will run
+`teardown(channel)` if the channel is currently connected to a broker (and will not run `teardown` at all otherwise.)
+Note that `setup` and `teardown` *must* either accept a callback or return a Promise.
+
+See a complete example in the [examples](./examples) folder.
 
 API:
 ----
@@ -80,10 +108,15 @@ Options:
 Returns true if the AmqpConnectionManager is connected to a broker, false otherwise.
 
 
+### AmqpConnectionManager#close()
+Close this AmqpConnectionManager and free all associated resources.
+
+
 ### ChannelWrapper events
 * `connect` - emitted every time this channel connects or reconnects.
 * `error(err, {name})` - emitted if an error occurs setting up the channel.
 * `drop({message, err})` - called when a JSON message was dropped because it could not be encoded.
+* `close` - emitted when this channel closes via a call to `close()`
 
 
 ### ChannelWrapper#addSetup(setup)
@@ -119,8 +152,10 @@ delivered.
 These are just aliases for calling `ack()` and `nack()` on the underlying channel.  They do nothing if the underlying
 channel is not connected.
 
+
 ### ChannelWrapper#queueLength()
 Returns a count of messages currently waiting to be sent to the underlying channel.
+
 
 ### ChannelWrapper#close()
 Close a channel, clean up resources associated with it.
