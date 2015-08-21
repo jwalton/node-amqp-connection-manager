@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/benbria/node-amqp-connection-manager.svg?branch=master)](https://travis-ci.org/benbria/node-amqp-connection-manager)
+
 Connection management for amqplib.
 
 amqp-connection-manager
