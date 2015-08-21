@@ -5,3 +5,5 @@ node_js:
   - 'iojs'
 after_success:
   - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
+before_install:
+  - "npm install amqplib"
