@@ -13,6 +13,7 @@
     "amqplib": "*"
   },
   "devDependencies": {
+    "chai-as-promised": "^5.1.0",
     "chai-string": "^1.1.2",
     "coffee-script": "^1.9.3",
     "proxyquire": "^1.7.0",

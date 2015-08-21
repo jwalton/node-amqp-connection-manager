@@ -12,6 +12,7 @@ pb             = require 'promise-breaker'
 # * `connect` - emitted every time this channel connects or reconnects.
 # * `error(err, {name})` - emitted if an error occurs setting up the channel.
 # * `drop({message, err})` - called when a JSON message was dropped because it could not be encoded.
+# * `close` - emitted when this channel closes via a call to `close()`
 #
 class ChannelWrapper extends EventEmitter
     # Create a new ChannelWrapper.
@@ -38,7 +39,7 @@ class ChannelWrapper extends EventEmitter
         if options.setup? then @_setups.push options.setup
 
         if connectionManager.isConnected()
-            @_connectHandler connectionManager._onConnect
+            @_onConnect {connection: @_connectionManager._currentConnection}
         connectionManager.on 'connect', @_onConnect
         connectionManager.on 'disconnect', @_onDisconnect
 
@@ -67,12 +68,11 @@ class ChannelWrapper extends EventEmitter
 
         .catch (err) =>
             @emit 'error', err, {name: @name}
-            log.error {err}, "Error creating channel #{@name}"
 
     # Called whenever we disconnect from the AMQP server.
     _onDisconnect: =>
-            @_channel?.close()
-            @_channel = null
+        @_channel?.close()
+        @_channel = null
 
     # Adds a new 'setup handler'.
     #
@@ -82,7 +82,9 @@ class ChannelWrapper extends EventEmitter
     # this Promise resolves.
     #
     # If there is a connection, `setup()` will be run immediately, and the addSetup Promise/callback won't resolve
-    # until `setup` is complete.
+    # until `setup` is complete.  Note that in this case, if the setup throws an error, no 'error' event will
+    # be emitted, since you can just handle the error here (although the `setup` will still be added for future
+    # reconnects, even if it throws an error.)
     #
     # Setup functions should, ideally, not throw errors, but if they do then the ChannelWrapper will emit an 'error'
     # event.
@@ -93,13 +95,13 @@ class ChannelWrapper extends EventEmitter
             if @_channel then setup @_channel
 
     # Remove a setup function added with `addSetup`.  If there is currently connection, `teardown(channel, [cb])` will
-    # be run immediately, and removeSetup will not return until it completes.
-    removeSetup: pb.break  (setup, teardown) ->
+    # be run immediately, and the returned Promise will not resolve until it completes.
+    #
+    removeSetup: pb.break (setup, teardown) ->
         @_setups = _.without @_setups, setup
-        if @_channel
+
+        if @_channel and teardown?
             pb.callFn teardown, 1, null, @_channel
-            .catch (err) ->
-                log.error {err}, "Error removing setup"
 
     # Returns the number of unsent messages queued on this channel.
     queueLength: -> return @_messages.length
@@ -118,7 +120,7 @@ class ChannelWrapper extends EventEmitter
         @_channel?.close()
         @_channel = null
 
-        @_connectionManager._removeChannel this
+        @emit 'close'
 
     # Returns a Promise which resolves when this channel next connects.
     # (Mainly here for unit testing...)
@@ -147,30 +149,36 @@ class ChannelWrapper extends EventEmitter
         .then =>
             encodedMessage = if @_json then new Buffer(JSON.stringify message.content) else message.content
 
-            if message
-                sendPromise = switch message.type
-                    when 'publish'
-                        pb.callFn(channel.publish, 4, channel,
-                            message.exchange, message.routingKey, encodedMessage, message.options)
-                    when 'sendToQueue'
-                        pb.callFn channel.sendToQueue, 3, channel, message.queue, encodedMessage, message.options
-                    else
-                        ### !pragma coverage-skip-block ###
-                        throw new Error "Unhandled message type #{message.type}"
+            sendPromise = switch message.type
+                when 'publish'
+                    new Promise (resolve, reject) ->
+                        result = channel.publish message.exchange, message.routingKey, encodedMessage,
+                            message.options, (err) ->
+                                return reject err if err
+                                setImmediate -> resolve result
+                when 'sendToQueue'
+                    new Promise (resolve, reject) ->
+                        result = channel.sendToQueue message.queue, encodedMessage, message.options, (err) ->
+                                return reject err if err
+                                setImmediate -> resolve result
 
-                return sendPromise.then(message.resolve, message.reject)
-            else
-                null
+                else
+                    ### !pragma coverage-skip-block ###
+                    throw new Error "Unhandled message type #{message.type}"
 
-        .catch (err) ->
-            # Something went wrong trying to send this message - probably cound't be encoded with JSON.stringify.
-            # Just reject it back...
-            message?.reject err
+            return sendPromise
 
+        .then(
+            (result) =>
+                @_messages.shift()
+                message.resolve result
+            (err) =>
+                # Something went wrong trying to send this message - could be JSON.stringify failed, could be the
+                # broker rejected the message.  Either way, reject it back
+                @_messages.shift()
+                message?.reject err
+        )
         .then =>
-            # Remove the message we just sent
-            @_messages.shift()
-
             # Send some more!
             @_publishQueuedMessages()
 
@@ -178,12 +186,15 @@ class ChannelWrapper extends EventEmitter
             ### !pragma coverage-skip-block ###
             console.error "amqp-connection-manager: ChannelWrapper:_publishQueuedMessages() - How did you get here?",
                 err.stack
+            @emit 'error', err
             @_working = false
 
         return null
 
     # Send an `ack` to the underlying channel.
     ack: (args...) ->
+        # Need @_channelInProgress here, because we can hook up a listener in a `setup`, and start receiving messages
+        # before we've finsihed running all the other `setup`s.
         channel = @_channelInProgress ? @_channel
         if channel then channel.ack(args...)
 

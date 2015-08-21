@@ -37,10 +37,9 @@ class AmqpConnectionManager extends EventEmitter
     createChannel: (options={}) ->
         channel = new ChannelWrapper this, options
         @_channels.push channel
+        channel.once 'close', =>
+            @_channels = _.without @_channels, channel
         return channel
-
-    _removeChannel: (channel) ->
-        @_channels = _.without @_channels, channel
 
     close: ->
         @_closed = true

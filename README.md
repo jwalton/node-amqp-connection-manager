@@ -92,12 +92,15 @@ Adds a new 'setup handler'.
 `setup(channel, [cb])` is a function to call when a new underlying channel is created - handy for asserting
 exchanges and queues exists, and whatnot.  The `channel` object here is a ConfigChannel from amqplib.
 The `setup` function should return a Promise (or optionally take a callback) - no messages will be sent until
-this promise resolves.
+this Promise resolves.
 
-If there is a connection, `setup()` will be run immediately, and the addSetup promise/callback won't resolve
-until `setup` is complete.
+If there is a connection, `setup()` will be run immediately, and the addSetup Promise/callback won't resolve
+until `setup` is complete.  Note that in this case, if the setup throws an error, no 'error' event will
+be emitted, since you can just handle the error here (although the `setup` will still be added for future
+reconnects, even if it throws an error.)
 
-Setup functions should, ideally, not throw errors, but if they do then the ChannelWrapper will emit an 'error' event.
+Setup functions should, ideally, not throw errors, but if they do then the ChannelWrapper will emit an 'error'
+event.
 
 
 ### ChannelWrapper#removeSetup(setup, teardown)
