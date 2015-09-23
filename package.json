@@ -1,6 +1,6 @@
 {
   "name": "amqp-connection-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Auto-reconnect and round robin support for amqplib.",
   "main": "lib/index.js",
   "dependencies": {
