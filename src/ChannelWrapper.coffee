@@ -71,7 +71,6 @@ class ChannelWrapper extends EventEmitter
 
     # Called whenever we disconnect from the AMQP server.
     _onDisconnect: =>
-        @_channel?.close()
         @_channel = null
 
     # Adds a new 'setup handler'.

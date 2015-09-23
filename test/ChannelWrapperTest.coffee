@@ -50,9 +50,6 @@ describe 'ChannelWrapper', ->
 
             connectionManager.simulateDisconnect()
 
-            # Should close the channel.
-            expect(channel.close.calledOnce).to.be.true
-
             connectionManager.simulateConnect()
             channelWrapper.waitForConnect()
         .then ->
