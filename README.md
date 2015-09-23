@@ -92,7 +92,8 @@ unreachable or dies, then AmqpConnectionManager will try the next available brok
 
 Options:
 * `options.heartbeatIntervalInSeconds` - Interval to send heartbeats to broker.  Defaults to 5 seconds.
-
+* `options.reconnectTimeInSeconds` - The time to wait before trying to reconnect.  If not specified,
+  defaults to `heartbeatIntervalInSeconds`.
 
 ### AmqpConnectionManager events
 * `connect({connection, url})` - Emitted whenever we successfully connect to a broker.

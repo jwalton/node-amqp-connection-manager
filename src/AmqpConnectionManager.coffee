@@ -19,6 +19,9 @@ class AmqpConnectionManager extends EventEmitter
     #
     # * `urls` is an array of brokers to connect to.  AmqplibConnectionManager will round-robin between them
     #   whenever it needs to create a new connection.
+    # * `options.heartbeatIntervalInSeconds` is the interval, in seconds, to send heartbeats.  Defaults to 5 seconds.
+    # * `options.reconnectTimeInSeconds` is the time to wait before trying to reconnect.  If not specified,
+    #   defaults to `heartbeatIntervalInSeconds`.
     #
     constructor: (@urls, options={}) ->
         @_channels = []
@@ -27,6 +30,7 @@ class AmqpConnectionManager extends EventEmitter
         @_currentUrl = 0
 
         @heartbeatIntervalInSeconds = options.heartbeatIntervalInSeconds ? HEARTBEAT_IN_SECONDS
+        @reconnectTimeInSeconds = options.reconnectTimeInSeconds ? @heartbeatIntervalInSeconds
 
         # There will be one listener per channel, and there could be a lot of channels, so disable warnings from node.
         @setMaxListeners 0
@@ -87,7 +91,7 @@ class AmqpConnectionManager extends EventEmitter
             @_currentConnection = null
 
             # TODO: Probably want to try right away here, especially if there are multiple brokers to try...
-            wait @heartbeatIntervalInSeconds * 1000
+            wait @reconnectTimeInSeconds * 1000
             .then => @_connect()
 
 module.exports = AmqpConnectionManager
