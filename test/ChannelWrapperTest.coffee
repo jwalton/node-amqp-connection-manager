@@ -365,3 +365,33 @@ describe 'ChannelWrapper', ->
 
             expect(p1).to.be.rejectedWith 'no publish'
             .then -> expect(p2).to.be.rejectedWith 'no send'
+
+    it 'should keep sending messages, even if we disconnect in the middle of sending', ->
+        publishCalls = 0
+        p1 = null
+
+        connectionManager.simulateConnect()
+        channelWrapper = new ChannelWrapper connectionManager, {
+            setup: (channel) ->
+                channel.publish = (a,b,c,d,cb) ->
+                    publishCalls++
+                    if publishCalls is 1
+                        # Never reply, this channel is disconnected
+                    else
+                        cb(null)
+
+                Promise.resolve()
+        }
+
+        channelWrapper.waitForConnect()
+        .then ->
+            p1 = channelWrapper.publish 'exchange', 'routingKey', 'content'
+            wait(10)
+        .then ->
+            connectionManager.simulateDisconnect()
+            wait(10)
+        .then ->
+            connectionManager.simulateConnect()
+            p1
+        .then ->
+            expect(publishCalls).to.equal 2

@@ -34,6 +34,10 @@ class ChannelWrapper extends EventEmitter
         # True if the "worker" is busy sending messages.  False if we need to start the worker to get stuff done.
         @_working = false
 
+        # We kill off workers when we disconnect.  Whenever we start a new worker, we bump up the `_workerNumber` -
+        # this makes it so if stale workers ever do wake up, they'll know to stop working.
+        @_workerNumber = 0
+
         # Array of setup functions to call.
         @_setups = []
         if options.setup? then @_setups.push options.setup
@@ -72,6 +76,9 @@ class ChannelWrapper extends EventEmitter
     # Called whenever we disconnect from the AMQP server.
     _onDisconnect: =>
         @_channel = null
+        # Kill off the current worker.  We never get any kind of error for messages in flight - see
+        # https://github.com/squaremo/amqp.node/issues/191.
+        @_working = false
 
     # Adds a new 'setup handler'.
     #
@@ -133,10 +140,11 @@ class ChannelWrapper extends EventEmitter
     _startWorker: ->
         if @_channel and !@_working
             @_working = true
-            @_publishQueuedMessages()
+            @_workerNumber++
+            @_publishQueuedMessages(@_workerNumber)
 
-    _publishQueuedMessages: ->
-        if @_messages.length is 0 or !@_channel
+    _publishQueuedMessages: (workerNumber) ->
+        if (@_messages.length is 0) or !@_channel or !@_working or (workerNumber != @_workerNumber)
             # Can't publish anything right now...
             @_working = false
             return Promise.resolve()
@@ -179,7 +187,7 @@ class ChannelWrapper extends EventEmitter
         )
         .then =>
             # Send some more!
-            @_publishQueuedMessages()
+            @_publishQueuedMessages(workerNumber)
 
         .catch (err) =>
             ### !pragma coverage-skip-block ###
