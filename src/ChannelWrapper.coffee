@@ -66,6 +66,7 @@ class ChannelWrapper extends EventEmitter
 
             @_settingUp = Promise.all(
                 @_setups.map (setupFn) =>
+                    # TODO: Use a timeout here to guard against setupFns that never resolve?
                     pb.callFn setupFn, 1, null, channel
                     .catch (err) =>
                         if @_channel
@@ -98,6 +99,7 @@ class ChannelWrapper extends EventEmitter
     # Called whenever we disconnect from the AMQP server.
     _onDisconnect: =>
         @_channel = null
+        @_settingUp = null
 
         # Kill off the current worker.  We never get any kind of error for messages in flight - see
         # https://github.com/squaremo/amqp.node/issues/191.
