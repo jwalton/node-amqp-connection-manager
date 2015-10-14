@@ -225,6 +225,34 @@ describe 'ChannelWrapper', ->
             expect(channel.sendToQueue.calledOnce, 'called sendToQueue').to.be.true
             expect(channelWrapper.queueLength(), 'queue length after sending everything').to.equal 0
 
+    it 'should queue messages for the underlying channel if channel closes while we are trying to send', ->
+        channelWrapper = new ChannelWrapper connectionManager
+        p1 = null
+
+        connectionManager.simulateConnect()
+        channelWrapper.waitForConnect()
+        .then ->
+            channelWrapper._channel.publish = (exchange, routingKey, encodedMessage, options, cb) ->
+                @close()
+                cb new Error 'Channel closed'
+            p1 = channelWrapper.publish 'exchange', 'routingKey', 'argleblargle', {options: true}
+
+            wait(10)
+
+        .then ->
+            expect(channelWrapper._channel).to.not.exist
+
+            connectionManager.simulateDisconnect()
+            connectionManager.simulateConnect()
+            channelWrapper.waitForConnect()
+            return p1
+
+        .then ->
+            # get the underlying channel
+            channel = channelWrapper._channel
+            expect(channel.publish.calledOnce, 'called publish').to.be.true
+            expect(channelWrapper.queueLength(), 'queue length after sending everything').to.equal 0
+
     it 'should run all setup messages prior to sending any queued messages', ->
         order = []
 

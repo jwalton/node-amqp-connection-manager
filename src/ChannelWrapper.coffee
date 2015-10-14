@@ -215,7 +215,7 @@ class ChannelWrapper extends EventEmitter
                 @_publishQueuedMessages(workerNumber)
 
             (err) =>
-                if _.includes err.message, 'Channel closed'
+                if !@_channel
                     # Tried to write to a closed channel.  Leave the message in the queue and we'll try again when we
                     # reconnect.
                 else
