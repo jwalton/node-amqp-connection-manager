@@ -56,6 +56,47 @@ describe 'ChannelWrapper', ->
             expect(setup1.callCount).to.equal 2
             expect(setup2.callCount).to.equal 2
 
+    it 'should emit an error if a setup function throws', ->
+        setup1 = sinon.spy -> Promise.resolve()
+        setup2 = sinon.spy -> Promise.reject new Error 'Boom!'
+        errors = []
+
+        channelWrapper = new ChannelWrapper connectionManager, {setup: setup1}
+        channelWrapper.on 'error', (err) -> errors.push err
+        channelWrapper.addSetup setup2
+        .then ->
+            connectionManager.simulateConnect()
+        .then ->
+            waitForCall = ->
+                if setup2.callCount is 0
+                    wait(10).then -> waitForCall()
+                else
+                    Promise.resolve()
+            waitForCall()
+        .then ->
+            expect(setup1.callCount).to.equal 1
+            expect(setup2.callCount).to.equal 1
+            expect(errors.length).to.equal 1
+
+    it 'should not emit an error if a setup function throws because the channel is closed', ->
+        setup1 = sinon.spy (channel) ->
+            Promise.resolve()
+            .then -> channel.close()
+
+        setup2 = sinon.spy -> wait(20).then -> throw new Error 'Boom!'
+
+        errors = []
+
+        channelWrapper = new ChannelWrapper connectionManager, {setup: setup1}
+        channelWrapper.on 'error', (err) -> errors.push err
+        channelWrapper.addSetup setup2
+        .then -> connectionManager.simulateConnect()
+        .then -> wait(50)
+        .then ->
+            expect(setup1.callCount).to.equal 1
+            expect(setup2.callCount).to.equal 1
+            expect(errors.length).to.equal 0
+
     it 'should return immediately from waitForConnect if we are already connected', ->
         connectionManager.simulateConnect()
         channelWrapper = new ChannelWrapper connectionManager
@@ -182,6 +223,34 @@ describe 'ChannelWrapper', ->
             channel = channelWrapper._channel
             expect(channel.publish.calledOnce, 'called publish').to.be.true
             expect(channel.sendToQueue.calledOnce, 'called sendToQueue').to.be.true
+            expect(channelWrapper.queueLength(), 'queue length after sending everything').to.equal 0
+
+    it 'should queue messages for the underlying channel if channel closes while we are trying to send', ->
+        channelWrapper = new ChannelWrapper connectionManager
+        p1 = null
+
+        connectionManager.simulateConnect()
+        channelWrapper.waitForConnect()
+        .then ->
+            channelWrapper._channel.publish = (exchange, routingKey, encodedMessage, options, cb) ->
+                @close()
+                cb new Error 'Channel closed'
+            p1 = channelWrapper.publish 'exchange', 'routingKey', 'argleblargle', {options: true}
+
+            wait(10)
+
+        .then ->
+            expect(channelWrapper._channel).to.not.exist
+
+            connectionManager.simulateDisconnect()
+            connectionManager.simulateConnect()
+            channelWrapper.waitForConnect()
+            return p1
+
+        .then ->
+            # get the underlying channel
+            channel = channelWrapper._channel
+            expect(channel.publish.calledOnce, 'called publish').to.be.true
             expect(channelWrapper.queueLength(), 'queue length after sending everything').to.equal 0
 
     it 'should run all setup messages prior to sending any queued messages', ->

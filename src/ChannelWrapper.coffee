@@ -34,6 +34,14 @@ class ChannelWrapper extends EventEmitter
         # True if the "worker" is busy sending messages.  False if we need to start the worker to get stuff done.
         @_working = false
 
+        # If we're in the process of creating a channel, this is a Promise which will resolve when the channel is
+        # set up.  Otherwise, this is `null`.
+        @_settingUp = null
+
+        # The currently connected channel.  Note that not all setup functions have been run on this channel until
+        # `@_settingUp` is either null or resolved.
+        @_channel = null
+
         # We kill off workers when we disconnect.  Whenever we start a new worker, we bump up the `_workerNumber` -
         # this makes it so if stale workers ever do wake up, they'll know to stop working.
         @_workerNumber = 0
@@ -53,29 +61,46 @@ class ChannelWrapper extends EventEmitter
 
         connection.createConfirmChannel()
         .then (channel) =>
-            @_channelInProgress = channel
-            Promise.all(
+            @_channel = channel
+            channel.on 'close', => @_onChannelClose(channel)
+
+            @_settingUp = Promise.all(
                 @_setups.map (setupFn) =>
+                    # TODO: Use a timeout here to guard against setupFns that never resolve?
                     pb.callFn setupFn, 1, null, channel
                     .catch (err) =>
-                        @emit 'error', err, {name: @name}
-            ).then -> channel
+                        if @_channel
+                            @emit 'error', err, {name: @name}
+                        else
+                            # Don't emit an error if setups failed because the channel was closing.
+            )
+            .then =>
+                @_settingUp = null
+                return @_channel
 
-        .then (channel) =>
-            @_channelInProgress = null
-            @_channel = channel
+        .then =>
+            return if !@_channel? # Can happen if channel closes while we're setting up.
 
             # Since we just connected, publish any queued messages
             @_startWorker()
-
             @emit 'connect'
 
         .catch (err) =>
             @emit 'error', err, {name: @name}
+            @_settingUp = null
+            @_channel = null
+
+    # Called whenever the channel closes.
+    _onChannelClose: (channel) ->
+        if @_channel is channel
+            @_channel = null
+            # Wait for another reconnect to create a new channel.
 
     # Called whenever we disconnect from the AMQP server.
     _onDisconnect: =>
         @_channel = null
+        @_settingUp = null
+
         # Kill off the current worker.  We never get any kind of error for messages in flight - see
         # https://github.com/squaremo/amqp.node/issues/191.
         @_working = false
@@ -98,7 +123,9 @@ class ChannelWrapper extends EventEmitter
         Promise.resolve()
         .then =>
             @_setups.push setup
-            if @_channel then setup @_channel
+            if @_channel
+                (@_settingUp or Promise.resolve())
+                .then => setup @_channel
 
     # Remove a setup function added with `addSetup`.  If there is currently connection, `teardown(channel, [cb])` will
     # be run immediately, and the returned Promise will not resolve until it completes.
@@ -106,8 +133,9 @@ class ChannelWrapper extends EventEmitter
     removeSetup: pb.break (setup, teardown) ->
         @_setups = _.without @_setups, setup
 
-        if @_channel and teardown?
-            pb.callFn teardown, 1, null, @_channel
+        if @_channel
+            (@_settingUp or Promise.resolve())
+            .then => pb.callFn teardown, 1, null, @_channel
 
     # Returns the number of unsent messages queued on this channel.
     queueLength: -> return @_messages.length
@@ -117,9 +145,10 @@ class ChannelWrapper extends EventEmitter
     # Any unsent messages will have their associated Promises rejected.
     #
     close: ->
+        @_working = false
         if @_messages.length isnt 0
             # Reject any unsent messages.
-            @_messages.forEach (message) -> message.reject()
+            @_messages.forEach (message) -> message.reject new Error 'Channel closed'
 
         @_connectionManager.removeListener 'connect', @_onConnect
         @_connectionManager.removeListener 'disconnect', @_onDisconnect
@@ -131,20 +160,22 @@ class ChannelWrapper extends EventEmitter
     # Returns a Promise which resolves when this channel next connects.
     # (Mainly here for unit testing...)
     waitForConnect: pb.break ->
-        if @_channel
+        if @_channel and !@_settingUp
             return Promise.resolve()
         else
             return new Promise (resolve) => @once 'connect', resolve
 
+    _shouldPublish: -> (@_messages.length > 0) and !@_settingUp and @_channel
+
     # Start publishing queued messages, if there isn't already a worker doing this.
     _startWorker: ->
-        if @_channel and !@_working
+        if !@_working and @_shouldPublish()
             @_working = true
             @_workerNumber++
             @_publishQueuedMessages(@_workerNumber)
 
     _publishQueuedMessages: (workerNumber) ->
-        if (@_messages.length is 0) or !@_channel or !@_working or (workerNumber != @_workerNumber)
+        if !@_shouldPublish() or !@_working or (workerNumber != @_workerNumber)
             # Can't publish anything right now...
             @_working = false
             return Promise.resolve()
@@ -179,16 +210,23 @@ class ChannelWrapper extends EventEmitter
             (result) =>
                 @_messages.shift()
                 message.resolve result
-            (err) =>
-                # Something went wrong trying to send this message - could be JSON.stringify failed, could be the
-                # broker rejected the message.  Either way, reject it back
-                @_messages.shift()
-                message.reject err
-        )
-        .then =>
-            # Send some more!
-            @_publishQueuedMessages(workerNumber)
 
+                # Send some more!
+                @_publishQueuedMessages(workerNumber)
+
+            (err) =>
+                if !@_channel
+                    # Tried to write to a closed channel.  Leave the message in the queue and we'll try again when we
+                    # reconnect.
+                else
+                    # Something went wrong trying to send this message - could be JSON.stringify failed, could be the
+                    # broker rejected the message.  Either way, reject it back
+                    @_messages.shift()
+                    message.reject err
+
+                    # Send some more!
+                    @_publishQueuedMessages(workerNumber)
+        )
         .catch (err) =>
             ### !pragma coverage-skip-block ###
             console.error "amqp-connection-manager: ChannelWrapper:_publishQueuedMessages() - How did you get here?",
@@ -199,16 +237,10 @@ class ChannelWrapper extends EventEmitter
         return null
 
     # Send an `ack` to the underlying channel.
-    ack: (args...) ->
-        # Need @_channelInProgress here, because we can hook up a listener in a `setup`, and start receiving messages
-        # before we've finsihed running all the other `setup`s.
-        channel = @_channelInProgress ? @_channel
-        if channel then channel.ack(args...)
+    ack: (args...) -> @_channel?.ack(args...)
 
     # Send a `nack` to the underlying channel.
-    nack: (args...) ->
-        channel = @_channelInProgress ? @_channel
-        if channel then channel.nack(args...)
+    nack: (args...) -> @_channel?.nack(args...)
 
     # Publish a message to the channel.
     #
