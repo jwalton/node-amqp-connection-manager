@@ -237,10 +237,10 @@ class ChannelWrapper extends EventEmitter
         return null
 
     # Send an `ack` to the underlying channel.
-    ack: (args...) -> if @_channel then @_channel.ack(args...)
+    ack: (args...) -> @_channel?.ack(args...)
 
     # Send a `nack` to the underlying channel.
-    nack: (args...) -> if @_channel then @_channel.nack(args...)
+    nack: (args...) -> @_channel?.nack(args...)
 
     # Publish a message to the channel.
     #
