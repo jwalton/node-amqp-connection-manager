@@ -31,6 +31,29 @@ describe 'AmqpConnectionManager', ->
 
                 .then resolve, reject
 
+    it 'should establish a connection to a broker using findServers', ->
+        new Promise (resolve, reject) ->
+            amqp = new AmqpConnectionManager(null, {
+                findServers: -> Promise.resolve 'amqp://localhost'
+            })
+            amqp.on 'connect', ({connection, url}) ->
+                Promise.resolve().then ->
+                    expect(url, 'url').to.equal 'amqp://localhost'
+                    expect(connection.url, 'connection.url').to.equal 'amqp://localhost?heartbeat=5'
+
+                .then resolve, reject
+
+    it 'should fail to connect if findServers returns no servers', ->
+        new Promise (resolve, reject) ->
+            amqp = new AmqpConnectionManager(null, {
+                findServers: -> Promise.resolve null
+            })
+            amqp.on 'disconnect', ({err}) ->
+                Promise.resolve().then ->
+                    expect(err.message).to.contain 'No servers found'
+                    amqp.close()
+                .then resolve, reject
+
     it 'should work with a URL with a query', ->
         new Promise (resolve, reject) ->
             amqp = new AmqpConnectionManager('amqp://localhost?frameMax=0x1000')
@@ -39,6 +62,11 @@ describe 'AmqpConnectionManager', ->
                     expect(connection.url, 'connection.url').to.equal 'amqp://localhost?frameMax=0x1000&heartbeat=5'
 
                 .then resolve, reject
+
+    it 'shhould throw an error if no url and no `findServers` option are provided', ->
+        expect(
+            -> amqp = new AmqpConnectionManager()
+        ).to.throw('Must supply either `urls` or `findServers`')
 
     it 'should reconnect to the broker if it can\'t connect in the first place', ->
         new Promise (resolve, reject) ->
