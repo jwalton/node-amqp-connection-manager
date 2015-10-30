@@ -94,6 +94,10 @@ Options:
 * `options.heartbeatIntervalInSeconds` - Interval to send heartbeats to broker.  Defaults to 5 seconds.
 * `options.reconnectTimeInSeconds` - The time to wait before trying to reconnect.  If not specified,
   defaults to `heartbeatIntervalInSeconds`.
+* `options.findServers(callback)` is a function which returns one or more servers to connect to.  This should
+  return either a single URL or an array of URLs.  This is handy when you're using a service discovery mechanism
+  such as Consul or etcd.  Instead of taking a `callback`, this can also return a Promise.  Note that if this
+  is supplied, then `urls` is ignored.
 
 ### AmqpConnectionManager events
 * `connect({connection, url})` - Emitted whenever we successfully connect to a broker.

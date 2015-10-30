@@ -18,7 +18,7 @@
     "coffee-coverage": "^0.6.3",
     "coffee-script": "^1.9.3",
     "coveralls": "^2.11.4",
-    "istanbul": "^0.3.18",
+    "istanbul": "^0.4.0",
     "mocha": "^2.2.5",
     "proxyquire": "^1.7.0",
     "sinon": "^1.16.1"

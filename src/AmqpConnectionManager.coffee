@@ -5,6 +5,7 @@ _              = require 'lodash'
 
 ChannelWrapper = require './ChannelWrapper'
 {wait}         = require './helpers'
+pb             = require 'promise-breaker'
 
 # Default heartbeat time.
 HEARTBEAT_IN_SECONDS = 5
@@ -22,11 +23,15 @@ class AmqpConnectionManager extends EventEmitter
     # * `options.heartbeatIntervalInSeconds` is the interval, in seconds, to send heartbeats.  Defaults to 5 seconds.
     # * `options.reconnectTimeInSeconds` is the time to wait before trying to reconnect.  If not specified,
     #   defaults to `heartbeatIntervalInSeconds`.
+    # * `options.findServers(callback)` is a function which returns one or more servers to connect to.  This should
+    #   return either a single URL or an array of URLs.  This is handy when you're using a service discovery mechanism
+    #   such as Consul or etcd.  Instead of taking a `callback`, this can also return a Promise.  Note that if this
+    #   is supplied, then `urls` is ignored.
     #
-    constructor: (@urls, options={}) ->
+    constructor: (urls, options={}) ->
+        if !urls and !options.findServers then throw new Error "Must supply either `urls` or `findServers`"
         @_channels = []
 
-        if !_.isArray @urls then @urls = [@urls]
         @_currentUrl = 0
 
         @heartbeatIntervalInSeconds = options.heartbeatIntervalInSeconds ? HEARTBEAT_IN_SECONDS
@@ -34,6 +39,8 @@ class AmqpConnectionManager extends EventEmitter
 
         # There will be one listener per channel, and there could be a lot of channels, so disable warnings from node.
         @setMaxListeners 0
+
+        @_findServers = options.findServers ? (-> Promise.resolve urls)
 
         @_connect()
 
@@ -56,35 +63,51 @@ class AmqpConnectionManager extends EventEmitter
     _connect: ->
         return Promise.resolve() if @_closed
 
-        # Round robin between brokers
-        if @_currentUrl >= @urls.length then @_currentUrl = 0
-        url = @urls[@_currentUrl]
-        @_currentUrl++
+        Promise.resolve()
+        .then =>
+            if !@_urls or (@_currentUrl >= @_urls.length)
+                @_currentUrl = 0
+                pb.callFn @_findServers, 0, null
+            else
+                @_urls
 
-        amqpUrl = urlUtils.parse url
-        if amqpUrl.search?
-            amqpUrl.search += "&heartbeat=#{@heartbeatIntervalInSeconds}"
-        else
-            amqpUrl.search = "?heartbeat=#{@heartbeatIntervalInSeconds}"
+        .then (urls) =>
+            if urls? and !_.isArray urls then urls = [urls]
+            @_urls = urls
 
-        amqp.connect urlUtils.format(amqpUrl)
-        .then (connection) =>
-            @_currentConnection = connection
+            if !urls or urls.length is 0 then throw new Error 'No servers found'
 
-            # Reconnect if the broker goes away.
-            connection.on 'error', (err) =>
-                @_currentConnection = null
-                @emit 'disconnect', {err}
-                @_connect()
-                .catch (err) ->
-                    ### !pragma coverage-skip-block ###
-                    # `_connect()` should never throw.
-                    console.error "amqp-connection-manager: AmqpConnectionManager:_connect() - How did you get here?",
-                        err.stack
+            # Round robin between brokers
+            url = urls[@_currentUrl]
+            @_currentUrl++
 
-            @emit 'connect', {connection, url}
+            amqpUrl = urlUtils.parse url
+            if amqpUrl.search?
+                amqpUrl.search += "&heartbeat=#{@heartbeatIntervalInSeconds}"
+            else
+                amqpUrl.search = "?heartbeat=#{@heartbeatIntervalInSeconds}"
+
+            amqp.connect urlUtils.format(amqpUrl)
+            .then (connection) =>
+                @_currentConnection = connection
+
+                # Reconnect if the broker goes away.
+                connection.on 'error', (err) =>
+                    @_currentConnection = null
+                    @emit 'disconnect', {err}
+                    @_connect()
+                    .catch (err) ->
+                        ### !pragma coverage-skip-block ###
+                        # `_connect()` should never throw.
+                        console.error "amqp-connection-manager: AmqpConnectionManager:_connect() - How did you get here?",
+                            err.stack
+
+                @emit 'connect', {connection, url}
+
+                return null
 
         .catch (err) =>
+            console.log err
             @emit 'disconnect', {err}
 
             # Connection failed...
