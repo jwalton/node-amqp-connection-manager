@@ -75,7 +75,7 @@ class AmqpConnectionManager extends EventEmitter
             if urls? and !_.isArray urls then urls = [urls]
             @_urls = urls
 
-            if !urls or urls.length is 0 then throw new Error 'No servers found'
+            if !urls or urls.length is 0 then throw new Error 'amqp-connection-manager: No servers found'
 
             # Round robin between brokers
             url = urls[@_currentUrl]
@@ -99,15 +99,14 @@ class AmqpConnectionManager extends EventEmitter
                     .catch (err) ->
                         ### !pragma coverage-skip-block ###
                         # `_connect()` should never throw.
-                        console.error "amqp-connection-manager: AmqpConnectionManager:_connect() - How did you get here?",
-                            err.stack
+                        console.error ("amqp-connection-manager: AmqpConnectionManager:_connect()" +
+                            " - How did you get here?"), err.stack
 
                 @emit 'connect', {connection, url}
 
                 return null
 
         .catch (err) =>
-            console.log err
             @emit 'disconnect', {err}
 
             # Connection failed...
