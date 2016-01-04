@@ -23,6 +23,7 @@ class AmqpConnectionManager extends EventEmitter
     # * `options.heartbeatIntervalInSeconds` is the interval, in seconds, to send heartbeats.  Defaults to 5 seconds.
     # * `options.reconnectTimeInSeconds` is the time to wait before trying to reconnect.  If not specified,
     #   defaults to `heartbeatIntervalInSeconds`.
+    # * `options.connectionOptions` is passed to the amqplib connect method.
     # * `options.findServers(callback)` is a function which returns one or more servers to connect to.  This should
     #   return either a single URL or an array of URLs.  This is handy when you're using a service discovery mechanism
     #   such as Consul or etcd.  Instead of taking a `callback`, this can also return a Promise.  Note that if this
@@ -33,6 +34,7 @@ class AmqpConnectionManager extends EventEmitter
         @_channels = []
 
         @_currentUrl = 0
+        @connectionOptions = options.connectionOptions
 
         @heartbeatIntervalInSeconds = options.heartbeatIntervalInSeconds ? HEARTBEAT_IN_SECONDS
         @reconnectTimeInSeconds = options.reconnectTimeInSeconds ? @heartbeatIntervalInSeconds
@@ -87,7 +89,7 @@ class AmqpConnectionManager extends EventEmitter
             else
                 amqpUrl.search = "?heartbeat=#{@heartbeatIntervalInSeconds}"
 
-            amqp.connect urlUtils.format(amqpUrl)
+            amqp.connect urlUtils.format(amqpUrl), @connectionOptions
             .then (connection) =>
                 @_currentConnection = connection
 
