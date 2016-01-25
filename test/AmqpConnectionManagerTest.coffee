@@ -31,6 +31,22 @@ describe 'AmqpConnectionManager', ->
 
                 .then resolve, reject
 
+    it 'should close connection to a broker', ->
+        new Promise (resolve, reject) ->
+            amqp = new AmqpConnectionManager('amqp://localhost')
+            connection = null
+            amqp.on 'connect', ({connection, url}) ->
+                Promise.resolve().then ->
+                    expect(url, 'url').to.equal 'amqp://localhost'
+                    expect(connection.url, 'connection.url').to.equal 'amqp://localhost?heartbeat=5'
+                    connection = amqp._currentConnection
+                    amqp.close()
+                .then ->
+                    expect(amqp._currentConnection, 'current connection').to.equal null
+                    expect(connection._closed, 'connection closed').to.be.true
+
+                .then resolve, reject
+
     it 'should establish a connection to a broker using findServers', ->
         new Promise (resolve, reject) ->
             amqp = new AmqpConnectionManager(null, {

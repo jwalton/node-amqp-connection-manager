@@ -46,9 +46,13 @@ class exports.FakeConfirmChannel extends EventEmitter
 
 class exports.FakeConnection extends EventEmitter
     constructor: (@url) ->
+        @_closed = false
 
     createConfirmChannel: ->
         Promise.resolve new exports.FakeConfirmChannel
+
+    close: ->
+        @_closed = true
 
 class exports.FakeAmqpConnectionManager extends EventEmitter
     constructor: ->
