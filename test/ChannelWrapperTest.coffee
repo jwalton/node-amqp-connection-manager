@@ -371,28 +371,32 @@ describe 'ChannelWrapper', ->
         .then ->
             channel = channelWrapper._channel
             channelWrapper.close()
+            .then ->
+                # Should close the channel.
+                expect(channel.close.calledOnce).to.be.true
 
-            # Should close the channel.
-            expect(channel.close.calledOnce).to.be.true
-
-            # Channel should let the connectionManager know it's going away.
-            expect(closeEvents).to.equal 1
+                # Channel should let the connectionManager know it's going away.
+                expect(closeEvents).to.equal 1
 
     it 'clean up when closed when not connected', ->
         closeEvents = 0
 
-        channelWrapper = new ChannelWrapper connectionManager
-        channelWrapper.on 'close', -> closeEvents++
-        channelWrapper.close()
-
-        # Channel should let the connectionManager know it's going away.
-        expect(closeEvents).to.equal 1
+        Promise.resolve()
+        .then ->
+            channelWrapper = new ChannelWrapper connectionManager
+            channelWrapper.on 'close', -> closeEvents++
+            channelWrapper.close()
+        .then ->
+            # Channel should let the connectionManager know it's going away.
+            expect(closeEvents).to.equal 1
 
     it 'reject outstanding messages when closed', ->
         channelWrapper = new ChannelWrapper connectionManager
         p1 = channelWrapper.publish 'exchange', 'routingKey', 'argleblargle', {options: true}
-        channelWrapper.close()
-        expect(p1).to.be.rejected
+        Promise.all [
+            channelWrapper.close(),
+            expect(p1).to.be.rejected
+        ]
 
     it 'should encode JSON messages', ->
         connectionManager.simulateConnect()

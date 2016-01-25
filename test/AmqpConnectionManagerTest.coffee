@@ -131,9 +131,10 @@ describe 'AmqpConnectionManager', ->
 
         # Closing the channel should remove all listeners and de-register the channel
         channel.close()
-        expect(amqp._channels.length, 'registered channels after close').to.equal 0
-        expect(amqp.listeners('connect').length, 'connect listners after close').to.equal 0
-        expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal 0
+        .then ->
+            expect(amqp._channels.length, 'registered channels after close').to.equal 0
+            expect(amqp.listeners('connect').length, 'connect listners after close').to.equal 0
+            expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal 0
 
     it 'should clean up channels on close', ->
         amqp = new AmqpConnectionManager('amqp://localhost')
@@ -146,9 +147,10 @@ describe 'AmqpConnectionManager', ->
 
         # Closing the connection should remove all listeners and de-register the channel
         amqp.close()
-        expect(amqp._channels.length, 'registered channels after close').to.equal 0
-        expect(amqp.listeners('connect').length, 'connect listners after close').to.equal 0
-        expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal 0
+        .then ->
+            expect(amqp._channels.length, 'registered channels after close').to.equal 0
+            expect(amqp.listeners('connect').length, 'connect listners after close').to.equal 0
+            expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal 0
 
     it 'should not reconnect after close', ->
         new Promise (resolve, reject) ->
@@ -163,6 +165,7 @@ describe 'AmqpConnectionManager', ->
                     # Close the manager
                     amqp.close()
 
+                .then ->
                     # Murder the broker on the first connect
                     amqplib.kill()
 

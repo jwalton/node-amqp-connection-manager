@@ -145,17 +145,21 @@ class ChannelWrapper extends EventEmitter
     # Any unsent messages will have their associated Promises rejected.
     #
     close: ->
-        @_working = false
-        if @_messages.length isnt 0
-            # Reject any unsent messages.
-            @_messages.forEach (message) -> message.reject new Error 'Channel closed'
+        Promise.resolve()
+        .then =>
+            @_working = false
+            if @_messages.length isnt 0
+                # Reject any unsent messages.
+                @_messages.forEach (message) -> message.reject new Error 'Channel closed'
 
-        @_connectionManager.removeListener 'connect', @_onConnect
-        @_connectionManager.removeListener 'disconnect', @_onDisconnect
-        @_channel?.close()
-        @_channel = null
+            @_connectionManager.removeListener 'connect', @_onConnect
+            @_connectionManager.removeListener 'disconnect', @_onDisconnect
+            answer = @_channel?.close() ? Promise.resolve()
+            @_channel = null
 
-        @emit 'close'
+            @emit 'close'
+
+            return answer
 
     # Returns a Promise which resolves when this channel next connects.
     # (Mainly here for unit testing...)

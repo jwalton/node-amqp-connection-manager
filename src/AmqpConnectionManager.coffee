@@ -55,10 +55,17 @@ class AmqpConnectionManager extends EventEmitter
         return channel
 
     close: ->
+        return if @_closed
         @_closed = true
 
-        @_channels.forEach (channel) -> channel.close()
-        @_channels = []
+        Promise.all @_channels.map (channel) -> channel.close()
+        .catch( ->
+            # Ignore errors closing channels.
+        )
+        .then =>
+            @_channels = []
+            @_currentConnection?.close()
+            @_currentConnection = null
 
     isConnected: -> return @_currentConnection?
 
