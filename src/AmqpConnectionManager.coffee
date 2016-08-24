@@ -111,6 +111,13 @@ class AmqpConnectionManager extends EventEmitter
                         console.error ("amqp-connection-manager: AmqpConnectionManager:_connect()" +
                             " - How did you get here?"), err.stack
 
+                # Reconnect if the connection closes gracefully
+                connection.on 'close', =>
+                    @_currentConnection = null
+
+                    wait @reconnectTimeInSeconds * 1000
+                    .then => @_connect()
+
                 @emit 'connect', {connection, url}
 
                 return null
