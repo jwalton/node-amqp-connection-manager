@@ -120,12 +120,11 @@ class ChannelWrapper extends EventEmitter
     # Setup functions should, ideally, not throw errors, but if they do then the ChannelWrapper will emit an 'error'
     # event.
     addSetup: pb.break (setup) ->
-        Promise.resolve()
+        (@_settingUp or Promise.resolve())
         .then =>
             @_setups.push setup
             if @_channel
-                (@_settingUp or Promise.resolve())
-                .then => setup @_channel
+                return setup(@_channel)
 
     # Remove a setup function added with `addSetup`.  If there is currently connection, `teardown(channel, [cb])` will
     # be run immediately, and the returned Promise will not resolve until it completes.
@@ -133,9 +132,10 @@ class ChannelWrapper extends EventEmitter
     removeSetup: pb.break (setup, teardown) ->
         @_setups = _.without @_setups, setup
 
-        if @_channel
-            (@_settingUp or Promise.resolve())
-            .then => pb.callFn teardown, 1, null, @_channel
+        (@_settingUp or Promise.resolve())
+        .then =>
+            if @_channel
+                return pb.callFn teardown, 1, null, @_channel
 
     # Returns the number of unsent messages queued on this channel.
     queueLength: -> return @_messages.length
