@@ -70,7 +70,9 @@ class AmqpConnectionManager extends EventEmitter
     isConnected: -> return @_currentConnection?
 
     _connect: ->
-        return Promise.resolve() if @_closed
+        return Promise.resolve() if @_closed or @_connecting or @isConnected()
+
+        @_connecting = true
 
         Promise.resolve()
         .then =>
@@ -102,9 +104,13 @@ class AmqpConnectionManager extends EventEmitter
 
                 # Reconnect if the broker goes away.
                 connection.on 'error', (err) =>
-                    @_currentConnection = null
-                    @emit 'disconnect', {err}
-                    @_connect()
+                    @_currentConnection.close()
+                    .catch((err) ->
+                        # Ignore
+                    ).then =>
+                        @_currentConnection = null
+                        @emit 'disconnect', {err}
+                        @_connect()
                     .catch (err) ->
                         ### !pragma coverage-skip-block ###
                         # `_connect()` should never throw.
@@ -118,6 +124,7 @@ class AmqpConnectionManager extends EventEmitter
                     wait @reconnectTimeInSeconds * 1000
                     .then => @_connect()
 
+                @_connecting = false
                 @emit 'connect', {connection, url}
 
                 return null
@@ -130,6 +137,8 @@ class AmqpConnectionManager extends EventEmitter
 
             # TODO: Probably want to try right away here, especially if there are multiple brokers to try...
             wait @reconnectTimeInSeconds * 1000
-            .then => @_connect()
+            .then =>
+                @_connecting = false
+                @_connect()
 
 module.exports = AmqpConnectionManager
