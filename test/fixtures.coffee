@@ -53,6 +53,7 @@ class exports.FakeConnection extends EventEmitter
 
     close: ->
         @_closed = true
+        return Promise.resolve()
 
 class exports.FakeAmqpConnectionManager extends EventEmitter
     constructor: ->

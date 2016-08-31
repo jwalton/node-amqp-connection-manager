@@ -104,9 +104,9 @@ class AmqpConnectionManager extends EventEmitter
 
                 # Reconnect if the broker goes away.
                 connection.on 'error', (err) =>
-                    @_currentConnection.close()
-                    .catch((err) ->
-                        # Ignore
+                    Promise.resolve()
+                    .then -> @_currentConnection.close()
+                    .catch((err) -> # Ignore
                     ).then =>
                         @_currentConnection = null
                         @emit 'disconnect', {err}
