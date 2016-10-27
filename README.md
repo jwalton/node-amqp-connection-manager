@@ -40,41 +40,45 @@ function which returns a Promise will also accept a callback as an optional para
 
 Here's the example:
 
-    var amqp = require('amqp-connection-manager');
+```js
+var amqp = require('amqp-connection-manager');
 
-    // Create a new connection manager
-    var connection = amqp.connect(['amqp://localhost'], {json: true});
+// Create a new connection manager
+var connection = amqp.connect(['amqp://localhost'], {json: true});
 
-    // Ask the connection manager for a ChannelWrapper.  Specify a setup function to run every time we reconnect
-    // to the broker.
-    var channelWrapper = connection.createChannel({
-        setup: function(channel) {
-            // `channel` here is a regular amqplib `ConfirmChannel`.
-            return channel.assertQueue('rxQueueName', {durable: true}),
-        }
-    });
+// Ask the connection manager for a ChannelWrapper.  Specify a setup function to run every time we reconnect
+// to the broker.
+var channelWrapper = connection.createChannel({
+    setup: function(channel) {
+        // `channel` here is a regular amqplib `ConfirmChannel`.
+        return channel.assertQueue('rxQueueName', {durable: true}),
+    }
+});
 
-    // Send some messages to the queue.  If we're not currently connected, these will be queued up in memory
-    // until we connect.  Note that `sendToQueue()` and `publish()` return a Promise which is fulfilled or rejected
-    // when the message is actually sent (or not sent.)
-    channelWrapper.sendToQueue('rxQueueName', {hello: 'world'})
-    .then(function() {
-      return console.log("Message was sent!  Hooray!");
-    }).catch(function(err) {
-      return console.log("Message was rejected...  Boo!");
-    });
+// Send some messages to the queue.  If we're not currently connected, these will be queued up in memory
+// until we connect.  Note that `sendToQueue()` and `publish()` return a Promise which is fulfilled or rejected
+// when the message is actually sent (or not sent.)
+channelWrapper.sendToQueue('rxQueueName', {hello: 'world'})
+.then(function() {
+  return console.log("Message was sent!  Hooray!");
+}).catch(function(err) {
+  return console.log("Message was rejected...  Boo!");
+});
+```
 
 Sometimes it's handy to modify a channel at run time.  For example, suppose you have a channel that's listening to
 one kind of message, and you decide you now also want to listen to some other kind of message.  This can be done
 by adding a new setup function to an existing ChannelWrapper:
 
-    channelWrapper.addSetup(function(channel) {
-        Promise.all([
-            channel.assertQueue("my-queue", { exclusive: true, autoDelete: true }),
-            channel.bindQueue("my-queue", "my-exchange", "create"),
-            channel.consume("my-queue", handleMessage)
-        ])
-    });
+```js
+channelWrapper.addSetup(function(channel) {
+    Promise.all([
+        channel.assertQueue("my-queue", { exclusive: true, autoDelete: true }),
+        channel.bindQueue("my-queue", "my-exchange", "create"),
+        channel.consume("my-queue", handleMessage)
+    ])
+});
+```
 
 `addSetup()` returns a Promise which resolves when the setup function is finished (or immediately, if the underlying
 connection is not currently connected to a broker.)  There is also a `removeSetup(setup, teardown)` which will run
