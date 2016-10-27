@@ -5,8 +5,8 @@
   "main": "lib/index.js",
   "dependencies": {
     "es6-promise": "^3.0.2",
-    "lodash": "^3.10.1",
-    "promise-breaker": "^2.0.3",
+    "lodash": "^4.15.0",
+    "promise-breaker": "^3.0.0",
     "when": "^3.7.3"
   },
   "peerDependencies": {
