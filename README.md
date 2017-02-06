@@ -44,11 +44,12 @@ Here's the example:
 var amqp = require('amqp-connection-manager');
 
 // Create a new connection manager
-var connection = amqp.connect(['amqp://localhost'], {json: true});
+var connection = amqp.connect(['amqp://localhost']);
 
 // Ask the connection manager for a ChannelWrapper.  Specify a setup function to run every time we reconnect
 // to the broker.
 var channelWrapper = connection.createChannel({
+    json: true,
     setup: function(channel) {
         // `channel` here is a regular amqplib `ConfirmChannel`.
         return channel.assertQueue('rxQueueName', {durable: true}),
