@@ -118,8 +118,9 @@ class AmqpConnectionManager extends EventEmitter
                             " - How did you get here?"), err.stack
 
                 # Reconnect if the connection closes gracefully
-                connection.on 'close', =>
+                connection.on 'close', (err) =>
                     @_currentConnection = null
+                    @emit 'disconnect', {err}
 
                     wait @reconnectTimeInSeconds * 1000
                     .then => @_connect()
