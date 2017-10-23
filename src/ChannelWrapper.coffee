@@ -67,7 +67,7 @@ class ChannelWrapper extends EventEmitter
             @_settingUp = Promise.all(
                 @_setups.map (setupFn) =>
                     # TODO: Use a timeout here to guard against setupFns that never resolve?
-                    pb.callFn setupFn, 1, null, channel
+                    pb.call(setupFn, null, channel)
                     .catch (err) =>
                         if @_channel
                             @emit 'error', err, {name: @name}
@@ -124,7 +124,7 @@ class ChannelWrapper extends EventEmitter
         .then =>
             @_setups.push setup
             if @_channel
-                return setup(@_channel)
+                return pb.call(setup, null, @_channel)
 
     # Remove a setup function added with `addSetup`.  If there is currently connection, `teardown(channel, [cb])` will
     # be run immediately, and the returned Promise will not resolve until it completes.
@@ -135,7 +135,7 @@ class ChannelWrapper extends EventEmitter
         (@_settingUp or Promise.resolve())
         .then =>
             if @_channel
-                return pb.callFn teardown, 1, null, @_channel
+                return pb.call(teardown, null, @_channel)
 
     # Returns the number of unsent messages queued on this channel.
     queueLength: -> return @_messages.length

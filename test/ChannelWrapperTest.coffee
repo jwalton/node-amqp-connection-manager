@@ -21,6 +21,7 @@ describe 'ChannelWrapper', ->
         setup2 = sinon.spy -> wait 10
 
         channelWrapper = new ChannelWrapper connectionManager, {setup: setup1}
+
         channelWrapper.addSetup setup2
         .then ->
             expect(setup1.callCount).to.equal 0
@@ -192,6 +193,30 @@ describe 'ChannelWrapper', ->
             expect(channel.publish.lastCall.args[0...4], 'second args').to.eql(
                 ['exchange', 'routingKey', 'argleblargle', undefined])
             expect(channelWrapper.queueLength(), 'queue length').to.equal 0
+
+    it 'should publish messages to the underlying channel with callbacks', (done) ->
+        connectionManager.simulateConnect()
+        channelWrapper = new ChannelWrapper connectionManager
+        channelWrapper.waitForConnect((err) ->
+            if err
+                return done(err)
+            channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {options: true}, (err, result) ->
+                if err
+                    return done(err)
+                try
+                    expect(result, 'result').to.equal true
+
+                    # get the underlying channel
+                    channel = channelWrapper._channel
+                    expect(channel.publish.calledOnce, 'called publish').to.be.true
+                    expect(channel.publish.lastCall.args[0...4], 'publish args').to.eql(
+                        ['exchange', 'routingKey', 'argleblargle', {options: true}]
+                    )
+                    done()
+                catch err
+                    return done err
+            )
+        )
 
     it 'should sendToQueue messages to the underlying channel', ->
         connectionManager.simulateConnect()
