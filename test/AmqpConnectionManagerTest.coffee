@@ -142,7 +142,7 @@ describe 'AmqpConnectionManager', ->
             amqp.once 'connect', ({connection, url}) ->
                 connectsSeen++
                 # Close the connection nicely
-                amqplib.close()
+                amqplib.simulateRemoteClose()
 
                 amqp.once 'connect', ({connection, url}) ->
                     # Make sure we connect a second time

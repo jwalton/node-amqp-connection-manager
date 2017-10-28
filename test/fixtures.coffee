@@ -10,7 +10,7 @@ class exports.FakeAmqp
     kill: ->
         @connection.emit 'error', new Error("Died in a fire")
 
-    close: ->
+    simulateRemoteClose: ->
         @connection.emit 'close', new Error("Connection closed")
 
     reset: ->
