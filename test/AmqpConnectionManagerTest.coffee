@@ -111,6 +111,10 @@ describe 'AmqpConnectionManager', ->
         new Promise (resolve, reject) ->
             amqp = new AmqpConnectionManager('amqp://localhost', {heartbeatIntervalInSeconds: 0.01})
             connectsSeen = 0
+            disconnectsSeen = 0
+
+            amqp.on 'disconnect', ({err}) ->
+                disconnectsSeen++
 
             amqp.once 'connect', ({connection, url}) ->
                 connectsSeen++
@@ -122,6 +126,30 @@ describe 'AmqpConnectionManager', ->
                     connectsSeen++
                     Promise.resolve().then ->
                         expect(connectsSeen).to.equal 2
+                        expect(disconnectsSeen).to.equal 1
+
+                    .then resolve, reject
+
+    it 'should reconnect to the broker if the broker closed connection', ->
+        new Promise (resolve, reject) ->
+            amqp = new AmqpConnectionManager('amqp://localhost', {heartbeatIntervalInSeconds: 0.01})
+            connectsSeen = 0
+            disconnectsSeen = 0
+
+            amqp.on 'disconnect', ({err}) ->
+                disconnectsSeen++
+
+            amqp.once 'connect', ({connection, url}) ->
+                connectsSeen++
+                # Close the connection nicely
+                amqplib.close()
+
+                amqp.once 'connect', ({connection, url}) ->
+                    # Make sure we connect a second time
+                    connectsSeen++
+                    Promise.resolve().then ->
+                        expect(connectsSeen).to.equal 2
+                        expect(disconnectsSeen).to.equal 1
 
                     .then resolve, reject
 
