@@ -32,7 +32,7 @@ var sendMessage = function() {
     .then(function() {
         return sendMessage();
     }).catch(function(err) {
-        return console.log("Message was rejected:", err.stack);
+        console.log("Message was rejected:", err.stack);
         channelWrapper.close();
         connection.close();
     });
