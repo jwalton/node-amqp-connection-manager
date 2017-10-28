@@ -133,7 +133,6 @@ Close this AmqpConnectionManager and free all associated resources.
 ### ChannelWrapper events
 * `connect` - emitted every time this channel connects or reconnects.
 * `error(err, {name})` - emitted if an error occurs setting up the channel.
-* `drop({message, err})` - called when a JSON message was dropped because it could not be encoded.
 * `close` - emitted when this channel closes via a call to `close()`
 
 
