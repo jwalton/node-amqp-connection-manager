@@ -13,6 +13,12 @@ class exports.FakeAmqp
     simulateRemoteClose: ->
         @connection.emit 'close', new Error("Connection closed")
 
+    simulateRemoteBlock: ->
+        @connection.emit 'blocked', new Error("Connection blocked")
+
+    simulateRemoteUnblock: ->
+        @connection.emit 'unblocked'
+
     reset: ->
         @connection = null
         @url = null

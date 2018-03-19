@@ -102,6 +102,13 @@ class AmqpConnectionManager extends EventEmitter
             .then (connection) =>
                 @_currentConnection = connection
 
+                #emit 'blocked' when RabbitMQ server decides to block the connection (resources running low)
+                connection.on 'blocked', (reason) =>
+                    @emit 'blocked', {reason}
+
+                connection.on 'unblocked', () =>
+                    @emit 'unblocked'
+
                 # Reconnect if the broker goes away.
                 connection.on 'error', (err) =>
                     Promise.resolve()

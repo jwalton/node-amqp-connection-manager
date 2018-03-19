@@ -221,3 +221,29 @@ describe 'AmqpConnectionManager', ->
                     expect(connectsSeen).to.equal 1
 
                 .then resolve, reject
+
+    it 'should detect connection block/unblock', ->
+        new Promise (resolve, reject) ->
+            amqp = new AmqpConnectionManager('amqp://localhost')
+            connectsSeen = 0
+            blockSeen = 0
+            unblockSeen = 0
+
+            amqp.on 'blocked', ({err}) ->
+                blockSeen++
+
+            amqp.on 'unblocked', () ->
+                unblockSeen++
+
+            amqp.once 'connect', ({connection, url}) ->
+                connectsSeen++
+                # Close the connection nicely
+                amqplib.simulateRemoteBlock()
+                amqplib.simulateRemoteUnblock()
+
+                Promise.resolve().then ->
+                    expect(connectsSeen).to.equal 1
+                    expect(blockSeen).to.equal 1
+                    expect(unblockSeen).to.equal 1
+
+                .then resolve, reject
