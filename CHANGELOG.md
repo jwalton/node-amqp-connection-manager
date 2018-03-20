@@ -1,3 +1,8 @@
+1.4.0
+-----
+
+* Add 'blocked' and 'unblocked' events (#25).
+
 1.3.7
 -----
 
