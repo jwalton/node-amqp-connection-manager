@@ -1,9 +1,18 @@
 language: node_js
+before_install:
+  - npm install -g npm
+  - npm install -g greenkeeper-lockfile@1
+before_script:
+  - greenkeeper-lockfile-update
 node_js:
-  - '4'
-  - '5'
-  - '6'
-  - '7'
   - 'node'
+  - '10'
+  - '9'
+  - '8'
+  - '6'
+  - '4'
 after_success:
   - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
+after_script:
+  # Only the first job will upload the lockfile
+  - greenkeeper-lockfile-upload
