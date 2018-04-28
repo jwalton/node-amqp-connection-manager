@@ -23,6 +23,7 @@ class ChannelWrapper extends EventEmitter
     #   are plain JSON objects.  These will be encoded automatically before being sent.
     #
     constructor: (connectionManager, options={}) ->
+        super()
         @_connectionManager = connectionManager
         @name = options.name
 

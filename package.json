@@ -17,12 +17,13 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-string": "^1.1.2",
-    "coffee-coverage": "^2.0.1",
-    "coffee-script": "^1.9.3",
+    "coffee-coverage": "^3.0.0",
+    "coffeescript": "^2.2.4",
     "coveralls": "^3.0.0",
+    "greenkeeper-lockfile": "^1.14.0",
     "istanbul": "^0.4.0",
-    "mocha": "^4.0.1",
-    "proxyquire": "^1.7.0",
+    "mocha": "^5.1.1",
+    "proxyquire": "^2.0.1",
     "sinon": "^4.0.1"
   },
   "scripts": {

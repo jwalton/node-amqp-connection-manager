@@ -1,9 +1,11 @@
 [![Build Status](https://travis-ci.org/benbria/node-amqp-connection-manager.svg?branch=master)](https://travis-ci.org/benbria/node-amqp-connection-manager)
 [![Coverage Status](https://coveralls.io/repos/benbria/node-amqp-connection-manager/badge.svg?branch=master&service=github)](https://coveralls.io/github/benbria/node-amqp-connection-manager?branch=master)
+[![Greenkeeper badge](https://badges.greenkeeper.io/benbria/node-amqp-connection-manager.svg)](https://greenkeeper.io/)
 
 [![Dependency Status](https://david-dm.org/benbria/node-amqp-connection-manager.svg)](https://david-dm.org/benbria/node-amqp-connection-manager)
 [![devDependency Status](https://david-dm.org/benbria/node-amqp-connection-manager/dev-status.svg)](https://david-dm.org/benbria/node-amqp-connection-manager#info=devDependencies)
 [![peerDependency Status](https://david-dm.org/benbria/node-amqp-connection-manager/peer-status.svg)](https://david-dm.org/benbria/node-amqp-connection-manager#info=peerDependencies)
+
 
 Connection management for amqplib.
 
