@@ -10,7 +10,6 @@ node_js:
   - '9'
   - '8'
   - '6'
-  - '4'
 after_success:
   - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
 after_script:
