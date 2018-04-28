@@ -30,6 +30,7 @@ class AmqpConnectionManager extends EventEmitter
     #   is supplied, then `urls` is ignored.
     #
     constructor: (urls, options={}) ->
+        super()
         if !urls and !options.findServers then throw new Error "Must supply either `urls` or `findServers`"
         @_channels = []
 

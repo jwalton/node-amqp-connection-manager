@@ -37,6 +37,7 @@ class exports.FakeAmqp
 
 class exports.FakeConfirmChannel extends EventEmitter
     constructor: ->
+        super()
         @publish = sinon.spy (exchage, routingKey, content, options, callback) =>
             @emit 'publish', content
             callback(null)
@@ -55,6 +56,7 @@ class exports.FakeConfirmChannel extends EventEmitter
 
 class exports.FakeConnection extends EventEmitter
     constructor: (@url) ->
+        super()
         @_closed = false
 
     createConfirmChannel: ->
@@ -66,6 +68,7 @@ class exports.FakeConnection extends EventEmitter
 
 class exports.FakeAmqpConnectionManager extends EventEmitter
     constructor: ->
+        super()
         @connected = false
 
     isConnected: -> @connected
