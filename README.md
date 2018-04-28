@@ -10,6 +10,8 @@ Connection management for amqplib.
 amqp-connection-manager
 =======================
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/benbria/node-amqp-connection-manager.svg)](https://greenkeeper.io/)
+
 Features:
 ---------
 
