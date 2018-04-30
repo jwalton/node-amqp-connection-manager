@@ -190,7 +190,7 @@ class ChannelWrapper extends EventEmitter
 
         Promise.resolve()
         .then =>
-            encodedMessage = if @_json then new Buffer(JSON.stringify message.content) else message.content
+            encodedMessage = if @_json then new Buffer.from(JSON.stringify message.content) else message.content
 
             sendPromise = switch message.type
                 when 'publish'
