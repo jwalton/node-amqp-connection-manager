@@ -1,3 +1,16 @@
+<a name="2.0.0"></a>
+# [2.0.0](https://github.com/benbria/node-amqp-connection-manager/compare/v1.4.2...v2.0.0) (2018-05-05)
+
+
+### Code Refactoring
+
+* Rewrite all source in javascript. ([377d01d](https://github.com/benbria/node-amqp-connection-manager/commit/377d01d))
+
+
+### BREAKING CHANGES
+
+* Officially dropping support for node v4.x.x.
+
 1.4.0
 -----
 
