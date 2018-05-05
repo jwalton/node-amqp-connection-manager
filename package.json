@@ -21,12 +21,14 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-string": "^1.1.2",
+    "commitlint": "^6.2.0",
     "coveralls": "^3.0.0",
     "eslint": "^4.19.1",
     "eslint-config-benbria": "^3.0.2",
     "eslint-plugin-import": "^2.11.0",
     "eslint-plugin-promise": "^3.7.0",
     "greenkeeper-lockfile": "^1.14.0",
+    "husky": "^1.0.0-rc.2",
     "istanbul": "^0.4.0",
     "mocha": "^5.1.1",
     "nyc": "^11.7.1",
@@ -47,7 +49,14 @@
     "test": "npm run test:lint && npm run test:unittest",
     "test:unittest": "NODE_ENV=test nyc mocha test",
     "test:lint": "eslint src test",
+    "precommit:unittest": "NODE_ENV=test nyc mocha test --reporter progress",
     "semantic-release": "semantic-release"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -e $GIT_PARAMS",
+      "pre-commit": "npm run test:lint && npm run precommit:unittest"
+    }
   },
   "repository": {
     "type": "git",
