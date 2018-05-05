@@ -1,5 +1,4 @@
 --require babel-register
---require coffeescript/register
 --reporter spec
 --recursive
 --check-leaks

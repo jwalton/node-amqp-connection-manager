@@ -19,7 +19,6 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-string": "^1.1.2",
-    "coffeescript": "^2.2.4",
     "coveralls": "^3.0.0",
     "eslint": "^4.19.1",
     "eslint-config-benbria": "^3.0.2",
@@ -29,15 +28,22 @@
     "istanbul": "^0.4.0",
     "mocha": "^5.1.1",
     "nyc": "^11.7.1",
+    "promise-tools": "^1.1.0",
     "proxyquire": "^2.0.1",
     "sinon": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=6.0.0",
+    "npm": ">5.0.0"
   },
   "scripts": {
     "prepare": "npm run build",
     "prepublishOnly": "npm test",
     "build": "babel -s -d lib src",
     "clean": "rm -rf lib coverage",
-    "test": "NODE_ENV=test nyc mocha \"test/**/*.{js,coffee}\""
+    "test": "npm run test:lint && npm run test:unittest",
+    "test:unittest": "NODE_ENV=test nyc mocha test",
+    "test:lint": "eslint src test"
   },
   "repository": {
     "type": "git",
