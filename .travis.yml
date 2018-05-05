@@ -1,16 +1,33 @@
 language: node_js
-before_install:
-  - npm install -g npm
-  - npm install -g greenkeeper-lockfile@1
-before_script:
-  - greenkeeper-lockfile-update
+
 node_js:
   - 'node'
   - '10'
   - '8'
   - '6'
-after_success:
-  - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
+
+before_install:
+  - npm install -g npm
+  - npm install -g nsp
+  - npm install -g greenkeeper-lockfile@1
+before_script:
+  - nsp check
+  - greenkeeper-lockfile-update
 after_script:
   # Only the first job will upload the lockfile
   - greenkeeper-lockfile-upload
+after_success:
+  - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
+
+jobs:
+  include:
+    - stage: release
+      node_js: lts/*
+      before_install:
+        - npm install -g npm
+      install:
+        - travis_retry npm install
+      before_script: skip
+      script: npm run semantic-release
+      after_script: skip
+      after_success: skip

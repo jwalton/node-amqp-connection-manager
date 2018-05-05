@@ -10,6 +10,8 @@
     "amqplib": "*"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^2.0.2",
+    "@semantic-release/git": "^4.0.3",
     "amqplib": "^0.5.1",
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
@@ -30,6 +32,7 @@
     "nyc": "^11.7.1",
     "promise-tools": "^1.1.0",
     "proxyquire": "^2.0.1",
+    "semantic-release": "^15.2.0",
     "sinon": "^5.0.1"
   },
   "engines": {
@@ -43,7 +46,8 @@
     "clean": "rm -rf lib coverage",
     "test": "npm run test:lint && npm run test:unittest",
     "test:unittest": "NODE_ENV=test nyc mocha test",
-    "test:lint": "eslint src test"
+    "test:lint": "eslint src test",
+    "semantic-release": "semantic-release"
   },
   "repository": {
     "type": "git",
