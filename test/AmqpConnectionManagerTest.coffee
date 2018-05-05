@@ -8,9 +8,9 @@ proxyquire = require 'proxyquire'
 
 amqplib = new FakeAmqp()
 
-AmqpConnectionManager = proxyquire '../src/AmqpConnectionManager', {
+AmqpConnectionManager = proxyquire('../src/AmqpConnectionManager', {
     'amqplib': amqplib
-}
+}).default
 
 describe 'AmqpConnectionManager', ->
     amqp = null

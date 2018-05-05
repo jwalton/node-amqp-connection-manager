@@ -4,20 +4,21 @@
   "description": "Auto-reconnect and round robin support for amqplib.",
   "main": "lib/index.js",
   "dependencies": {
-    "es6-promise": "^4.1.1",
-    "lodash": "^4.15.0",
-    "promise-breaker": "^4.1.2",
-    "when": "^3.7.3"
+    "promise-breaker": "^4.1.2"
   },
   "peerDependencies": {
     "amqplib": "*"
   },
   "devDependencies": {
     "amqplib": "^0.5.1",
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-env": "^2.4.1",
+    "babel-plugin-istanbul": "^4.1.6",
+    "babel-register": "^6.26.0",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-string": "^1.1.2",
-    "coffee-coverage": "^3.0.0",
     "coffeescript": "^2.2.4",
     "coveralls": "^3.0.0",
     "eslint": "^4.19.1",
@@ -27,15 +28,16 @@
     "greenkeeper-lockfile": "^1.14.0",
     "istanbul": "^0.4.0",
     "mocha": "^5.1.1",
+    "nyc": "^11.7.1",
     "proxyquire": "^2.0.1",
     "sinon": "^5.0.1"
   },
   "scripts": {
-    "prepublish": "npm run build && npm test",
-    "build": "coffee -c -o lib src",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test",
+    "build": "babel -s -d lib src",
     "clean": "rm -rf lib coverage",
-    "distclean": "npm run clean && rm -rf node_modules",
-    "test": "mocha \"test/**/*.{js,coffee}\" && istanbul report text-summary lcov"
+    "test": "NODE_ENV=test nyc mocha \"test/**/*.{js,coffee}\""
   },
   "repository": {
     "type": "git",

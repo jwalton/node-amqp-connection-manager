@@ -5,8 +5,7 @@ sinon      = require 'sinon'
 fixtures   = require './fixtures'
 {wait}     = require '../src/helpers'
 
-ChannelWrapper = require '../src/ChannelWrapper'
-
+ChannelWrapper = require('../src/ChannelWrapper').default
 
 describe 'ChannelWrapper', ->
     connectionManager = null
@@ -20,9 +19,9 @@ describe 'ChannelWrapper', ->
         setup1 = sinon.spy -> wait 10
         setup2 = sinon.spy -> wait 10
 
-        channelWrapper = new ChannelWrapper connectionManager, {setup: setup1}
+        channelWrapper = new ChannelWrapper(connectionManager, {setup: setup1})
 
-        channelWrapper.addSetup setup2
+        return channelWrapper.addSetup setup2
         .then ->
             expect(setup1.callCount).to.equal 0
             expect(setup2.callCount).to.equal 0

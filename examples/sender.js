@@ -1,4 +1,3 @@
-Promise = global.Promise || require('es6-promise').Promise;
 var amqp = require('..');
 var wait = require('../lib/helpers').wait;
 

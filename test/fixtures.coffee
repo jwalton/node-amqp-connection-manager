@@ -1,6 +1,4 @@
-Promise = global.Promise ? require('es6-promise').Promise
 {EventEmitter} = require 'events'
-_              = require 'lodash'
 sinon          = require 'sinon'
 
 class exports.FakeAmqp
@@ -28,7 +26,7 @@ class exports.FakeAmqp
             if @failConnections then return Promise.reject new Error('No')
 
             allowConnection = true
-            @deadServers.forEach (deadUrl) -> if _.startsWith url, deadUrl then allowConnection = false
+            @deadServers.forEach (deadUrl) -> if url.startsWith(deadUrl) then allowConnection = false
             if !allowConnection
                 return Promise.reject new Error("Dead server #{url}")
 

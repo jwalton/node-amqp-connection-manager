@@ -1,4 +1,6 @@
+--require babel-register
 --require coffeescript/register
---require coffee-coverage/register-istanbul
 --reporter spec
 --recursive
+--check-leaks
+--exit

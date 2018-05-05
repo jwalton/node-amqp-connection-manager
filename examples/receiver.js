@@ -1,4 +1,3 @@
-Promise = global.Promise || require('es6-promise').Promise;
 var amqp = require('..');
 
 var QUEUE_NAME = 'amqp-connection-manager-sample1'
