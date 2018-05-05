@@ -11,18 +11,15 @@
 
 * Officially dropping support for node v4.x.x.
 
-1.4.0
------
+# 1.4.0
 
 * Add 'blocked' and 'unblocked' events (#25).
 
-1.3.7
------
+# 1.3.7
 
 * Fix bug where we would stop sending messages if remote gracefully closes connection.
 
-1.3.6
------
+# 1.3.6
 
 * Fix bug where ChannelWrapper would expect setup function to return a Promise
   and not accept a callback if channel was already connected.
