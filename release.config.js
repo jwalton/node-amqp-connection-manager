@@ -1,4 +1,5 @@
 module.exports = {
+    "extends": "@jwalton/semantic-release-config",
     "verifyConditions": [
         "@semantic-release/changelog",
         "@semantic-release/npm",
