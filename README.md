@@ -143,7 +143,7 @@ Close this AmqpConnectionManager and free all associated resources.
 Adds a new 'setup handler'.
 
 `setup(channel, [cb])` is a function to call when a new underlying channel is created - handy for asserting
-exchanges and queues exists, and whatnot.  The `channel` object here is a ConfigChannel from amqplib.
+exchanges and queues exists, and whatnot.  The `channel` object here is a ConfirmChannel from amqplib.
 The `setup` function should return a Promise (or optionally take a callback) - no messages will be sent until
 this Promise resolves.
 
