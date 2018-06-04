@@ -33,6 +33,19 @@ describe('AmqpConnectionManager', function() {
         })
     );
 
+    it('should establish a url object based connection to a broker', () =>
+        new Promise(function(resolve, reject) {
+            amqp = new AmqpConnectionManager({url: 'amqp://localhost'});
+            return amqp.on('connect', ({ connection, url }) =>
+                Promise.resolve()
+                .then(() => {
+                    expect(url, 'url').to.equal('amqp://localhost');
+                    expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+                }).then(resolve, reject)
+            );
+        })
+    );
+
     it('should close connection to a broker', () =>
         new Promise(function(resolve, reject) {
             amqp = new AmqpConnectionManager('amqp://localhost');
@@ -54,6 +67,21 @@ describe('AmqpConnectionManager', function() {
         new Promise(function(resolve, reject) {
             amqp = new AmqpConnectionManager(null, {
                 findServers() { return Promise.resolve('amqp://localhost'); }
+            });
+
+            return amqp.on('connect', ({ connection, url }) =>
+                Promise.resolve().then(function() {
+                    expect(url, 'url').to.equal('amqp://localhost');
+                    expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+                }).then(resolve, reject)
+            );
+        })
+    );
+
+    it('should establish a url object based connection to a broker using findServers', () =>
+        new Promise(function(resolve, reject) {
+            amqp = new AmqpConnectionManager(null, {
+                findServers() { return Promise.resolve({url: 'amqp://localhost'}); }
             });
 
             return amqp.on('connect', ({ connection, url }) =>
