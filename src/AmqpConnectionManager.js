@@ -128,13 +128,15 @@ export default class AmqpConnectionManager extends EventEmitter {
             this._currentUrl++;
 
             // url can be a string or object {url: string, connectionOptions?: object}
-            const amqpUrl = urlUtils.parse(url.url || url);
+            const urlString = url.url || url;
+            const connectionOptions = url.connectionOptions || this.connectionOptions;
+
+            const amqpUrl = urlUtils.parse(urlString);
             if(amqpUrl.search) {
                 amqpUrl.search += `&heartbeat=${this.heartbeatIntervalInSeconds}`;
             } else {
                 amqpUrl.search = `?heartbeat=${this.heartbeatIntervalInSeconds}`;
             }
-            const connectionOptions = url.connectionOptions || this.connectionOptions;
 
             return amqp.connect(urlUtils.format(amqpUrl), connectionOptions)
             .then(connection => {
@@ -171,7 +173,7 @@ export default class AmqpConnectionManager extends EventEmitter {
                 });
 
                 this._connecting = false;
-                this.emit('connect', { connection, url: amqpUrl.href });
+                this.emit('connect', { connection, url: urlString });
 
                 return null;
             });
