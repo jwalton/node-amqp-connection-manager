@@ -171,7 +171,7 @@ export default class AmqpConnectionManager extends EventEmitter {
                 });
 
                 this._connecting = false;
-                this.emit('connect', { connection, url });
+                this.emit('connect', { connection, url: amqpUrl.href });
 
                 return null;
             });
