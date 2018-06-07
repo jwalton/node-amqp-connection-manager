@@ -27,7 +27,10 @@ export default class AmqpConnectionManager extends EventEmitter {
     /**
      *  Create a new AmqplibConnectionManager.
      *
-     * @param {string[]} urls - An array of brokers to connect to.
+     * @param {(string|Object)[]} urls - An array of brokers to connect to.
+     *   Takes url strings or objects {url: string, connectionOptions?: object}
+     *   If present, a broker's [connectionOptions] will be used instead
+     *   of [options.connectionOptions] when passed to the amqplib connect method.
      *   AmqplibConnectionManager will round-robin between them whenever it
      *   needs to create a new connection.
      * @param {Object} [options={}] -
@@ -124,14 +127,18 @@ export default class AmqpConnectionManager extends EventEmitter {
             const url = urls[this._currentUrl];
             this._currentUrl++;
 
-            const amqpUrl = urlUtils.parse(url);
+            // url can be a string or object {url: string, connectionOptions?: object}
+            const urlString = url.url || url;
+            const connectionOptions = url.connectionOptions || this.connectionOptions;
+
+            const amqpUrl = urlUtils.parse(urlString);
             if(amqpUrl.search) {
                 amqpUrl.search += `&heartbeat=${this.heartbeatIntervalInSeconds}`;
             } else {
                 amqpUrl.search = `?heartbeat=${this.heartbeatIntervalInSeconds}`;
             }
 
-            return amqp.connect(urlUtils.format(amqpUrl), this.connectionOptions)
+            return amqp.connect(urlUtils.format(amqpUrl), connectionOptions)
             .then(connection => {
                 this._currentConnection = connection;
 
@@ -166,7 +173,7 @@ export default class AmqpConnectionManager extends EventEmitter {
                 });
 
                 this._connecting = false;
-                this.emit('connect', { connection, url });
+                this.emit('connect', { connection, url: urlString });
 
                 return null;
             });
