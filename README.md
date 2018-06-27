@@ -76,7 +76,7 @@ by adding a new setup function to an existing ChannelWrapper:
 
 ```js
 channelWrapper.addSetup(function(channel) {
-    Promise.all([
+    return Promise.all([
         channel.assertQueue("my-queue", { exclusive: true, autoDelete: true }),
         channel.bindQueue("my-queue", "my-exchange", "create"),
         channel.consume("my-queue", handleMessage)
