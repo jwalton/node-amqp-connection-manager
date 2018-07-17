@@ -12,7 +12,7 @@
   "devDependencies": {
     "@jwalton/semantic-release-config": "^1.0.0",
     "@semantic-release/changelog": "^2.0.2",
-    "@semantic-release/git": "^6.0.1",
+    "@semantic-release/git": "^7.0.0",
     "amqplib": "^0.5.1",
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
