@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.0.0...v2.1.0) (2018-08-09)
+
+
+### Features
+
+* Support for per URL connection options ([ec2d484](https://github.com/benbria/node-amqp-connection-manager/commit/ec2d484)), closes [#29](https://github.com/benbria/node-amqp-connection-manager/issues/29) [#34](https://github.com/benbria/node-amqp-connection-manager/issues/34) [#44](https://github.com/benbria/node-amqp-connection-manager/issues/44)
+
 <a name="2.0.0"></a>
 # [2.0.0](https://github.com/benbria/node-amqp-connection-manager/compare/v1.4.2...v2.0.0) (2018-05-05)
 
