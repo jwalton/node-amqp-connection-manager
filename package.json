@@ -26,7 +26,7 @@
     "eslint": "^5.0.0",
     "eslint-config-benbria": "^3.0.2",
     "eslint-plugin-import": "^2.11.0",
-    "eslint-plugin-promise": "^3.7.0",
+    "eslint-plugin-promise": "^4.0.0",
     "greenkeeper-lockfile": "^1.14.0",
     "husky": "^1.0.0-rc.2",
     "istanbul": "^0.4.0",
