@@ -89,6 +89,7 @@ export default class AmqpConnectionManager extends EventEmitter {
             .then(() => {
                 this._channels = [];
                 if(this._currentConnection) {
+                    this._currentConnection.removeAllListeners('close');
                     this._currentConnection.close();
                 }
                 this._currentConnection = null;
