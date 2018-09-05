@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/benbria/node-amqp-connection-manager/compare/v2.1.0...v2.1.1) (2018-09-05)
+
+
+### Bug Fixes
+
+* Remove reconnection listener when closing the connection manager. ([eeb6e2b](https://github.com/benbria/node-amqp-connection-manager/commit/eeb6e2b))
+
 # [2.1.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.0.0...v2.1.0) (2018-08-09)
 
 
