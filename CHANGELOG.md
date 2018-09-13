@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/benbria/node-amqp-connection-manager/compare/v2.1.1...v2.1.2) (2018-09-13)
+
+
+### Bug Fixes
+
+* Export a default object from root module. ([78893c9](https://github.com/benbria/node-amqp-connection-manager/commit/78893c9)), closes [#51](https://github.com/benbria/node-amqp-connection-manager/issues/51)
+
 ## [2.1.1](https://github.com/benbria/node-amqp-connection-manager/compare/v2.1.0...v2.1.1) (2018-09-05)
 
 
