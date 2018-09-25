@@ -40,7 +40,7 @@ export default class ChannelWrapper extends EventEmitter {
             .then(() => {
                 this._setups.push(setup);
                 if(this._channel) {
-                    return pb.call(setup, null, this._channel);
+                    return pb.call(setup, this, this._channel);
                 } else {
                     return undefined;
                 }
@@ -65,7 +65,7 @@ export default class ChannelWrapper extends EventEmitter {
 
             return (this._settingUp || Promise.resolve())
             .then(() => this._channel
-                ? pb.call(teardown, null, this._channel)
+                ? pb.call(teardown, this, this._channel)
                 : undefined
             );
         });
@@ -156,6 +156,8 @@ export default class ChannelWrapper extends EventEmitter {
         this._connectionManager = connectionManager;
         this.name = options.name;
 
+        this.context = {};
+
         this._json = ('json' in options) ? options.json : false;
 
         // Place to store queued messages.
@@ -206,7 +208,7 @@ export default class ChannelWrapper extends EventEmitter {
             this._settingUp = Promise.all(
                 this._setups.map(setupFn =>
                     // TODO: Use a timeout here to guard against setupFns that never resolve?
-                    pb.call(setupFn, null, channel)
+                    pb.call(setupFn, this, channel)
                     .catch(err => {
                         if(this._channel) {
                             this.emit('error', err, { name: this.name });

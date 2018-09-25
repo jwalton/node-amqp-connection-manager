@@ -62,6 +62,22 @@ describe('ChannelWrapper', function() {
         expect(setup2.callCount).to.equal(2);
     });
 
+    it('should set `this` correctly in a setup function', async function() {
+        let whatIsThis;
+
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup() {
+                whatIsThis = this;
+            }
+        });
+
+        connectionManager.simulateConnect();
+        await channelWrapper.waitForConnect();
+
+        expect(whatIsThis).to.equal(channelWrapper);
+    });
+
+
     it('should emit an error if a setup function throws', async function() {
         const setup1 = sinon.spy(() => Promise.resolve());
         const setup2 = sinon.spy(() => Promise.reject(new Error('Boom!')));
