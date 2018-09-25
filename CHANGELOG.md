@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.1.2...v2.2.0) (2018-09-25)
+
+
+### Features
+
+* Set 'this' to be the channel wrapper in the setup function. ([551200f](https://github.com/benbria/node-amqp-connection-manager/commit/551200f))
+
 ## [2.1.2](https://github.com/benbria/node-amqp-connection-manager/compare/v2.1.1...v2.1.2) (2018-09-13)
 
 
