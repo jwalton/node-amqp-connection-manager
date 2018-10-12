@@ -24,7 +24,7 @@
     "chai-string": "^1.1.2",
     "coveralls": "^3.0.0",
     "eslint": "^5.0.0",
-    "eslint-config-benbria": "^3.0.2",
+    "eslint-config-benbria": "^4.0.0",
     "eslint-plugin-import": "^2.11.0",
     "eslint-plugin-promise": "^4.0.0",
     "greenkeeper-lockfile": "^1.14.0",
