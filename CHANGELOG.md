@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.2.0...v2.3.0) (2018-11-20)
+
+
+### Features
+
+* Add ChannelWrapper.ackAll() and ChannelWrapper.nackAll(). ([0246695](https://github.com/benbria/node-amqp-connection-manager/commit/0246695)), closes [#60](https://github.com/benbria/node-amqp-connection-manager/issues/60)
+
 # [2.2.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.1.2...v2.2.0) (2018-09-25)
 
 
