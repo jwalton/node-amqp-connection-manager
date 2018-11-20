@@ -387,8 +387,18 @@ export default class ChannelWrapper extends EventEmitter {
         return this._channel && this._channel.ack.apply(this._channel, arguments);
     }
 
+    // Send an `ackAll` to the underlying channel.
+    ackAll() {
+        return this._channel && this._channel.ackAll.apply(this._channel, arguments);
+    }
+
     // Send a `nack` to the underlying channel.
     nack() {
         return this._channel && this._channel.nack.apply(this._channel, arguments);
+    }
+
+    // Send a `nackAll` to the underlying channel.
+    nackAll() {
+        return this._channel && this._channel.nackAll.apply(this._channel, arguments);
     }
 }

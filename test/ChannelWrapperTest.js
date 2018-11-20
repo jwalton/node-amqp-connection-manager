@@ -417,9 +417,17 @@ describe('ChannelWrapper', function() {
                 expect(channel.ack.calledTwice).to.be.true;
                 expect(channel.ack.lastCall.args).to.eql(['b']);
 
+                channelWrapper.ackAll();
+                expect(channel.ackAll.calledOnce).to.be.true;
+
                 channelWrapper.nack('c', false, true);
                 expect(channel.nack.calledOnce).to.be.true;
-                return expect(channel.nack.lastCall.args).to.eql(['c', false, true]);
+                expect(channel.nack.lastCall.args).to.eql(['c', false, true]);
+
+                channelWrapper.nackAll(true);
+                expect(channel.nackAll.calledOnce).to.be.true;
+                expect(channel.nackAll.lastCall.args).to.eql([true]);
+
             });
     });
 
