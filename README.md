@@ -55,7 +55,7 @@ var channelWrapper = connection.createChannel({
     setup: function(channel) {
         // `channel` here is a regular amqplib `ConfirmChannel`.
         // Note that `this` here is the channelWrapper instance.
-        return channel.assertQueue('rxQueueName', {durable: true}),
+        return channel.assertQueue('rxQueueName', {durable: true});
     }
 });
 
