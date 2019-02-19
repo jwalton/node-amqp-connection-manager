@@ -47,9 +47,9 @@
     "build": "babel -s -d lib src",
     "clean": "rm -rf lib coverage",
     "test": "npm run test:lint && npm run test:unittest",
-    "test:unittest": "NODE_ENV=test nyc mocha test",
+    "test:unittest": "NODE_ENV=test nyc mocha",
     "test:lint": "eslint src test",
-    "precommit:unittest": "BABEL_DISABLE_CACHE=1 NODE_ENV=test nyc mocha test --reporter progress",
+    "precommit:unittest": "BABEL_DISABLE_CACHE=1 NODE_ENV=test nyc mocha --reporter progress",
     "semantic-release": "semantic-release"
   },
   "husky": {
