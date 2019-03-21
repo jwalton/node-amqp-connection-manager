@@ -12,7 +12,7 @@
   "devDependencies": {
     "@babel/cli": "^7.2.3",
     "@babel/core": "^7.4.0",
-    "@babel/preset-env": "^7.3.1",
+    "@babel/preset-env": "^7.4.2",
     "@babel/register": "^7.0.0",
     "@jwalton/semantic-release-config": "^1.0.0",
     "@semantic-release/changelog": "^3.0.1",
