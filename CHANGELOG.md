@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.0...v2.3.1) (2019-04-01)
+
+
+### Bug Fixes
+
+* prevent too many connection attempts on error ([2760ce5](https://github.com/benbria/node-amqp-connection-manager/commit/2760ce5)), closes [#77](https://github.com/benbria/node-amqp-connection-manager/issues/77)
+
 # [2.3.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.2.0...v2.3.0) (2018-11-20)
 
 
