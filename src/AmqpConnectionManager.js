@@ -148,21 +148,15 @@ export default class AmqpConnectionManager extends EventEmitter {
 
                 connection.on('unblocked', () => this.emit('unblocked'));
 
-                // Reconnect if the broker goes away.
-                connection.on('error', err =>
-                    Promise.resolve()
-                    .then(() =>this._currentConnection.close())
-                    .catch(() => { /* Ignore */ })
-                    .then(() => {
-                        this._currentConnection = null;
-                        this.emit('disconnect', { err });
-                        return this._connect();
-                    })
-                    // `_connect()` should never throw.
-                    .catch(neverThrows)
-                );
+                connection.on('error', (/* err */) => {
+                    // if this event was emitted, then the connection was already closed,
+                    // so no need to call #close here
+                    // also, 'close' is emitted after 'error',
+                    // so no need for work already done in 'close' handler
+                    return Promise.resolve();
+                });
 
-                // Reconnect if the connection closes gracefully
+                // Reconnect if the connection closes
                 connection.on('close', err => {
                     this._currentConnection = null;
                     this.emit('disconnect', { err });
