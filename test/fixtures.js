@@ -5,7 +5,9 @@ export class FakeAmqp {
     constructor() { this.reset(); }
 
     kill() {
-        this.connection.emit('error', new Error("Died in a fire"));
+        const err = new Error("Died in a fire");
+        this.connection.emit('error', err);
+        this.connection.emit('close', err);
     }
 
     simulateRemoteClose() {
