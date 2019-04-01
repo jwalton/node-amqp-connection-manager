@@ -153,7 +153,6 @@ export default class AmqpConnectionManager extends EventEmitter {
                     // so no need to call #close here
                     // also, 'close' is emitted after 'error',
                     // so no need for work already done in 'close' handler
-                    return Promise.resolve();
                 });
 
                 // Reconnect if the connection closes
