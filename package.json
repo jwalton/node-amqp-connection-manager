@@ -36,7 +36,7 @@
     "promise-tools": "^2.0.0",
     "proxyquire": "^2.0.1",
     "semantic-release": "^15.13.0",
-    "sinon": "^7.2.4"
+    "sinon": "^7.3.2"
   },
   "engines": {
     "node": ">=6.0.0",
