@@ -589,4 +589,27 @@ describe('ChannelWrapper', function() {
                 return p1;
             }).then(() => expect(publishCalls).to.equal(2));
     });
+
+    it('should publish enqued messages to the underlying channel without waiting for confirms', function() {
+        connectionManager.simulateConnect();
+        let p1, p2;
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup(channel) {
+                channel.publish = sinon.stub();
+                return Promise.resolve();
+            }
+        });
+
+        return channelWrapper.waitForConnect()
+            .then(() => {
+                p1 = channelWrapper.publish('exchange', 'routingKey', 'msg:1');
+                p2 = channelWrapper.publish('exchange', 'routingKey', 'msg:2');
+                return promiseTools.delay(10);
+            }).then(() => {
+                const channel = channelWrapper._channel;
+                expect(channel.publish.calledTwice).to.be.true;
+                expect(p1).to.not.be.fulfilled;
+                expect(p2).to.not.be.fulfilled;
+            });
+    });
 });
