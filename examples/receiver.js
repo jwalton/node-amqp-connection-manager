@@ -10,12 +10,12 @@ var onMessage = function(data) {
 }
 
 // Create a connetion manager
-var connection = amqp.connect(['amqp://localhost'], {json: true});
+var connection = amqp.connect(['amqp://localhost']);
 connection.on('connect', function() {
     console.log('Connected!');
 });
-connection.on('disconnect', function(params) {
-    console.log('Disconnected.', params.err.stack);
+connection.on('disconnect', function(err) {
+    console.log('Disconnected.', err.stack);
 });
 
 // Set up a channel listening for messages in the queue.
