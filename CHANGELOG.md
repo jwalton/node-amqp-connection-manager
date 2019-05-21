@@ -1,3 +1,10 @@
+## [2.3.2](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.1...v2.3.2) (2019-05-21)
+
+
+### Bug Fixes
+
+* Null delta to get semantic-release to pick up [#65](https://github.com/benbria/node-amqp-connection-manager/issues/65).  Fix [#84](https://github.com/benbria/node-amqp-connection-manager/issues/84). ([9737135](https://github.com/benbria/node-amqp-connection-manager/commit/9737135))
+
 ## [2.3.1](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.0...v2.3.1) (2019-04-01)
 
 
