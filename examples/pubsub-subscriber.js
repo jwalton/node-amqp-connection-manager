@@ -11,9 +11,9 @@ const onMessage = data => {
 }
 
 // Create a connetion manager
-const connection = amqp.connect(['amqp://localhost'], {json: true});
+const connection = amqp.connect(['amqp://localhost']);
 connection.on('connect', () => console.log('Connected!'));
-connection.on('disconnect', params => console.log('Disconnected.', params.err.stack));
+connection.on('disconnect', err => console.log('Disconnected.', err.stack));
 
 // Set up a channel listening for messages in the queue.
 var channelWrapper = connection.createChannel({
