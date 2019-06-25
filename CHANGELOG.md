@@ -1,3 +1,10 @@
+## [2.3.3](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.2...v2.3.3) (2019-06-25)
+
+
+### Bug Fixes
+
+* **package:** update promise-breaker to version 5.0.0 ([ed91042](https://github.com/benbria/node-amqp-connection-manager/commit/ed91042))
+
 ## [2.3.2](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.1...v2.3.2) (2019-05-21)
 
 
