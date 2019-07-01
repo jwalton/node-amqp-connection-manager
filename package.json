@@ -29,7 +29,7 @@
     "eslint-plugin-import": "^2.11.0",
     "eslint-plugin-promise": "^4.0.0",
     "greenkeeper-lockfile": "^1.14.0",
-    "husky": "^2.0.0",
+    "husky": "^3.0.0",
     "istanbul": "^0.4.0",
     "mocha": "^6.0.2",
     "nyc": "^14.0.0",
