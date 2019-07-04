@@ -1,3 +1,16 @@
+# [3.0.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.3...v3.0.0) (2019-07-04)
+
+
+### Continuous Integration
+
+* Stop running tests for node 6 and node 8. ([164b882](https://github.com/benbria/node-amqp-connection-manager/commit/164b882))
+
+
+### BREAKING CHANGES
+
+* Officially drop support for node 6 and node 8 (although they will probably still
+work).
+
 ## [2.3.3](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.2...v2.3.3) (2019-06-25)
 
 
