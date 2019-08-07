@@ -168,10 +168,14 @@ export default class ChannelWrapper extends EventEmitter {
           messages_to_republish.push(this._messages.shift());
         }
         while (messages_to_republish.length) {
+          let content =
+            messages_to_republish[0].content.type === "Buffer"
+              ? Buffer.from(messages_to_republish[0].content)
+              : messages_to_republish[0].content;
           const args = [
             messages_to_republish[0].exchange || messages_to_republish[0].queue,
             messages_to_republish[0].routingKey,
-            messages_to_republish[0].content,
+            content,
             messages_to_republish[0].options
           ];
           this[messages_to_republish[0].type](...args);
