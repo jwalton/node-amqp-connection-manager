@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
+import DiskArray from '@trusk/array-to-disk';
 
 /**
  *  Calls to `publish()` or `sendToQueue()` work just like in amqplib, but messages are queued internally and
@@ -161,7 +162,21 @@ export default class ChannelWrapper extends EventEmitter {
         this._json = ('json' in options) ? options.json : false;
 
         // Place to store queued messages.
-        this._messages = [];
+        this._messages = new DiskArray(options.swap_path, options.swap_size);
+        const messages_to_republish = [];
+        while (this._messages.length) {
+          messages_to_republish.push(this._messages.shift());
+        }
+        while (messages_to_republish.length) {
+          const args = [
+            messages_to_republish[0].exchange || messages_to_republish[0].queue,
+            messages_to_republish[0].routingKey,
+            messages_to_republish[0].content,
+            messages_to_republish[0].options
+          ];
+          this[messages_to_republish[0].type](...args);
+          messages_to_republish.shift();
+        }
 
         // Place to store published, but not yet confirmed messages
         this._unconfirmedMessages = [];
