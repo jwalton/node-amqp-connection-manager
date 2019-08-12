@@ -163,6 +163,7 @@ export default class ChannelWrapper extends EventEmitter {
 
         // Place to store queued messages.
         this._messages = new DiskArray(options.swap_path, options.swap_size);
+        this._messages.setEventEmitter(this, "droppedMessage");
         const messages_to_republish = [];
         while (this._messages.length) {
           messages_to_republish.push(this._messages.shift());
