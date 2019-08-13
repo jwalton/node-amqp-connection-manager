@@ -506,6 +506,7 @@ describe('ChannelWrapper', function() {
     });
 
     it('should encode JSON messages', function() {
+        // require("fs").writeFileSync("./swap/data", "[]"); // clean the swap
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
             json: true

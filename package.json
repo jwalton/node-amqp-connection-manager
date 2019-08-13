@@ -4,6 +4,7 @@
   "description": "Auto-reconnect and round robin support for amqplib.",
   "main": "lib/index.js",
   "dependencies": {
+    "@trusk/array-to-disk": "1.1.0",
     "promise-breaker": "^5.0.0"
   },
   "peerDependencies": {

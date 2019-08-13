@@ -16,6 +16,7 @@ Connection management for amqplib.
 * Automatically reconnect when your amqplib broker dies in a fire.
 * Round-robin connections between multiple brokers in a cluster.
 * If messages are sent while the broker is unavailable, queues messages in memory until we reconnect.
+* queued message are persisted to disk in case of unexpected crash/reboot, and recovered in memory.
 * Supports both promises and callbacks (using [promise-breaker](https://github.com/jwalton/node-promise-breaker))
 * Very un-opinionated library - a thin wrapper around amqplib.
 
@@ -133,6 +134,8 @@ Options:
   arbitrary data in.
 * `options.json` if true, then ChannelWrapper assumes all messages passed to `publish()` and `sendToQueue()`
    are plain JSON objects.  These will be encoded automatically before being sent.
+* `options.swap_path` if defined, then ChannelWrapper will persist the array of queued messages to disk.
+* `options.swap_size` the size of the storage (defaults to `50000`) see [node-localstorage](https://www.npmjs.com/package/node-localstorage).
 
 ### AmqpConnectionManager#isConnected()
 
