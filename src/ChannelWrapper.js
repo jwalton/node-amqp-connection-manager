@@ -1,6 +1,8 @@
 import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
 import DiskArray from '@trusk/array-to-disk';
+import rimraf from "rimraf";
+import path from "path";
 
 /**
  *  Calls to `publish()` or `sendToQueue()` work just like in amqplib, but messages are queued internally and
@@ -164,6 +166,9 @@ export default class ChannelWrapper extends EventEmitter {
         // Place to store queued messages.
         this._messages = new DiskArray(options.swap_path, options.swap_size);
         this._messages.setEventEmitter(this, "droppedMessage");
+        if (options.swap_path) {
+          rimraf.sync(`${path.resolve(options.swap_path)}/data.*`);
+        }
         const messages_to_republish = [];
         while (this._messages.length) {
           messages_to_republish.push(this._messages.shift());
