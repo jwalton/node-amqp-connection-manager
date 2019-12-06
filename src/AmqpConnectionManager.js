@@ -135,7 +135,10 @@ export default class AmqpConnectionManager extends EventEmitter {
             let amqpUrl = null;
 
             if(typeof urlString === "object") {
-                amqpUrl = url;
+                amqpUrl = Object.assign({}, url);
+                if(!amqpUrl.heartbeat) {
+                    amqpUrl.heartbeat = this.heartbeatIntervalInSeconds;
+                }
             }else {
                 amqpUrl = urlUtils.parse(urlString);
                 if(amqpUrl.search) {

@@ -33,6 +33,29 @@ describe('AmqpConnectionManager', function() {
         })
     );
 
+    it('should establish a connection to a broker, using an object as the URL', () =>
+    new Promise(function(resolve, reject) {
+        amqp = new AmqpConnectionManager({
+            protocol: 'amqp',
+            hostname: 'localhost'
+        });
+        return amqp.on('connect', ({ connection, url }) =>
+            Promise.resolve()
+            .then(() => {
+                expect(url, 'url').to.eql({
+                    protocol: 'amqp',
+                    hostname: 'localhost'
+                });
+                expect(connection.url, 'connection.url').to.eql({
+                    protocol: 'amqp',
+                    hostname: 'localhost',
+                    heartbeat: 5
+                });
+            }).then(resolve, reject)
+        );
+    })
+);
+
     it('should establish a url object based connection to a broker', () =>
         new Promise(function(resolve, reject) {
             amqp = new AmqpConnectionManager({url: 'amqp://localhost'});
