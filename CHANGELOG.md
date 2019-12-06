@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/benbria/node-amqp-connection-manager/compare/v3.0.0...v3.1.0) (2019-12-06)
+
+
+### Features
+
+* Allow using URL object to connect, same format as amqplib accepts. ([f046680](https://github.com/benbria/node-amqp-connection-manager/commit/f046680))
+
 # [3.0.0](https://github.com/benbria/node-amqp-connection-manager/compare/v2.3.3...v3.0.0) (2019-07-04)
 
 
