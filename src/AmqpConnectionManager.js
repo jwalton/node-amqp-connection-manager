@@ -132,14 +132,22 @@ export default class AmqpConnectionManager extends EventEmitter {
             const urlString = url.url || url;
             const connectionOptions = url.connectionOptions || this.connectionOptions;
 
-            const amqpUrl = urlUtils.parse(urlString);
-            if(amqpUrl.search) {
-                amqpUrl.search += `&heartbeat=${this.heartbeatIntervalInSeconds}`;
-            } else {
-                amqpUrl.search = `?heartbeat=${this.heartbeatIntervalInSeconds}`;
+            let amqpUrl = null;
+
+            if(typeof urlString === "object") {
+                amqpUrl = url;
+            }else {
+                amqpUrl = urlUtils.parse(urlString);
+                if(amqpUrl.search) {
+                    amqpUrl.search += `&heartbeat=${this.heartbeatIntervalInSeconds}`;
+                } else {
+                    amqpUrl.search = `?heartbeat=${this.heartbeatIntervalInSeconds}`;
+                }
+                amqpUrl = urlUtils.format(amqpUrl);
             }
 
-            return amqp.connect(urlUtils.format(amqpUrl), connectionOptions)
+
+            return amqp.connect(amqpUrl, connectionOptions)
             .then(connection => {
                 this._currentConnection = connection;
 

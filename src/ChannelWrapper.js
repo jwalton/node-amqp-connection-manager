@@ -413,4 +413,19 @@ export default class ChannelWrapper extends EventEmitter {
     nackAll() {
         return this._channel && this._channel.nackAll.apply(this._channel, arguments);
     }
+
+    // Send a `purgeQueue` to the underlying channel.
+    purgeQueue() {
+        return this._channel && this._channel.purgeQueue.apply(this._channel, arguments);
+    }
+
+    // Send a `checkQueue` to the underlying channel.
+    checkQueue() {
+        return this._channel && this._channel.checkQueue.apply(this._channel, arguments);
+    }
+
+    // Send a `assertQueue` to the underlying channel.
+    assertQueue() {
+        return this._channel && this._channel.assertQueue.apply(this._channel, arguments);
+    }
 }
