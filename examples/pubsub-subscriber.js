@@ -19,7 +19,7 @@ connection.on('disconnect', err => console.log('Disconnected.', err.stack));
 var channelWrapper = connection.createChannel({
     setup: channel =>
         // `channel` here is a regular amqplib `ConfirmChannel`.
-        Promise.all([
+        return Promise.all([
             channel.assertQueue(QUEUE_NAME, { exclusive: true, autoDelete: true }),
             channel.assertExchange(EXCHANGE_NAME, 'topic'),
             channel.prefetch(1),
