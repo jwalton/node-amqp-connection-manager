@@ -18,7 +18,7 @@
     "@semantic-release/changelog": "^3.0.1",
     "@semantic-release/git": "^7.0.1",
     "amqplib": "^0.5.1",
-    "babel-plugin-istanbul": "^5.1.1",
+    "babel-plugin-istanbul": "^6.0.0",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-string": "^1.1.2",
