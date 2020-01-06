@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/benbria/node-amqp-connection-manager/compare/v3.1.0...v3.1.1) (2020-01-06)
+
+
+### Bug Fixes
+
+* typo ([6055b02](https://github.com/benbria/node-amqp-connection-manager/commit/6055b02))
+
 # [3.1.0](https://github.com/benbria/node-amqp-connection-manager/compare/v3.0.0...v3.1.0) (2019-12-06)
 
 
