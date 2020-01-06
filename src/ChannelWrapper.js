@@ -55,7 +55,7 @@ export default class ChannelWrapper extends EventEmitter {
      *
      * @param {function} setup - the setup function to remove.
      * @param {function} [teardown] - `function(channel, [cb])` to run to tear
-     *   down the chanel.
+     *   down the channel.
      * @param {function} [done] - Optional callback.
      * @returns {void | Promise} - Resolves when complete.
      */
