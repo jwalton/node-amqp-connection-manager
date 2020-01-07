@@ -82,7 +82,8 @@ export default class AmqpConnectionManager extends EventEmitter {
         if(this._closed) { return Promise.resolve(); }
         this._closed = true;
 
-        return Promise.all(this._channels.map(channel => channel.close()))
+        return Promise.resolve(this._connectPromise).then(() => {
+            return Promise.all(this._channels.map(channel => channel.close()))
             .catch(function() {
                 // Ignore errors closing channels.
             })
@@ -94,6 +95,7 @@ export default class AmqpConnectionManager extends EventEmitter {
                 }
                 this._currentConnection = null;
             });
+        });
     }
 
     isConnected() {
@@ -101,13 +103,15 @@ export default class AmqpConnectionManager extends EventEmitter {
     }
 
     _connect() {
-        if(this._closed || this._connecting || this.isConnected()) {
+        if (this._connectPromise) {
+            return this._connectPromise;
+        }
+
+        if(this._closed || this.isConnected()) {
             return Promise.resolve();
         }
 
-        this._connecting = true;
-
-        return Promise.resolve()
+        this._connectPromise = Promise.resolve()
         .then(() => {
             if(!this._urls || (this._currentUrl >= this._urls.length)) {
                 this._currentUrl = 0;
@@ -177,7 +181,7 @@ export default class AmqpConnectionManager extends EventEmitter {
                     .catch(neverThrows);
                 });
 
-                this._connecting = false;
+                this._connectPromise = null;
                 this.emit('connect', { connection, url: urlString });
 
                 return null;
@@ -188,13 +192,15 @@ export default class AmqpConnectionManager extends EventEmitter {
 
             // Connection failed...
             this._currentConnection = null;
+            this._connectPromise = null;
 
             // TODO: Probably want to try right away here, especially if there are multiple brokers to try...
             return wait(this.reconnectTimeInSeconds * 1000)
             .then(() => {
-                this._connecting = false;
                 return this._connect();
             });
         });
+
+        return this._connectPromise;
     }
 }

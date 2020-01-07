@@ -2,7 +2,7 @@ import chai from 'chai';
 import chaiString from 'chai-string';
 import * as promiseTools from 'promise-tools';
 import proxyquire from 'proxyquire';
-import { FakeAmqp } from './fixtures';
+import { FakeAmqp, FakeConnection } from './fixtures';
 
 chai.use(chaiString);
 const { expect } = chai;
@@ -85,6 +85,57 @@ describe('AmqpConnectionManager', function() {
             );
         })
     );
+
+    /**
+     * When close() was called before _connect() finished, the connection was remaining established indefinitely
+     */
+    it('should close pending connection to a broker', async () => {
+        let closed = false;
+        let connected = false;
+
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        // Connection should not yet be established
+        expect(amqp._currentConnection, 'current connection').to.equal(undefined);
+        // Connection should be pending though
+        expect(amqp._connectPromise).to.be.an.instanceof(Promise);
+
+        // Call close before the connection is established
+        const closePromise = amqp.close().then(() => {
+            closed = true;
+
+            // Connection should not present after close
+            expect(amqp._currentConnection, 'current connection').to.equal(null);
+            // Connection promise should not be present anymore
+            expect(amqp._connectPromise).to.equal(null);
+            // Connect should resolve before close
+            expect(connected).to.equal(true);
+        });
+
+        // This prevents double call to close()
+        expect(amqp._closed).to.equal(true);
+
+        // Wait for connect before checking amqp._currentConnection
+        const connectPromise = new Promise((resolve, reject) => {
+            // I tried to use once helper from events module but
+            // does not work with babel for some reason
+            amqp.once('connect', resolve);
+            amqp.once('error', reject);
+        }).then(() => {
+            connected = true;
+
+            // Connection should be present right after connect
+            expect(amqp._currentConnection, 'current connection').to.be.an.instanceof(FakeConnection);
+            // Connection promise should not be present anymore
+            expect(amqp._connectPromise).to.equal(null);
+            // Connect should resolve before close
+            expect(closed).to.equal(false);
+        });
+
+        await Promise.all([
+            closePromise,
+            connectPromise,
+        ]);
+    });
 
     it('should establish a connection to a broker using findServers', () =>
         new Promise(function(resolve, reject) {
