@@ -35,7 +35,7 @@
     "nyc": "^14.0.0",
     "promise-tools": "^2.0.0",
     "proxyquire": "^2.0.1",
-    "semantic-release": "^15.13.18",
+    "semantic-release": "^16.0.0",
     "sinon": "^7.3.2"
   },
   "engines": {
