@@ -458,6 +458,62 @@ describe('ChannelWrapper', function() {
         return channelWrapper.nack('c', false, true);
     });
 
+    it('should proxy assertQueue, bindQueue, assertExchange to the underlying channel', function() {
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager);
+        return channelWrapper.waitForConnect()
+            .then(function() {
+                // get the underlying channel
+                const channel = channelWrapper._channel;
+
+                channelWrapper.assertQueue('dog');
+                expect(channel.assertQueue.calledOnce).to.be.true;
+                expect(channel.assertQueue.lastCall.args).to.eql(['dog']);
+
+                channelWrapper.bindQueue('dog', 'bone');
+                expect(channel.bindQueue.calledOnce).to.be.true;
+                expect(channel.bindQueue.lastCall.args).to.eql(['dog', 'bone']);
+
+                channelWrapper.assertExchange('bone');
+                expect(channel.assertExchange.calledOnce).to.be.true;
+                expect(channel.assertExchange.lastCall.args).to.eql(['bone']);
+            });
+    });
+
+    it(`should proxy assertQueue, bindQueue, assertExchange to the underlying channel,
+      even if we aren't done setting up`, function() {
+        const channelWrapper = new ChannelWrapper(connectionManager);
+
+        channelWrapper.addSetup(function() {
+            channelWrapper.assertQueue('dog');
+            channelWrapper.bindQueue('dog', 'bone');
+            channelWrapper.assertExchange('bone');
+            return Promise.resolve();
+        });
+
+        connectionManager.simulateConnect();
+
+        return channelWrapper.waitForConnect()
+            .then(function() {
+                const channel = channelWrapper._channel;
+                expect(channel.assertQueue.calledOnce).to.be.true;
+                expect(channel.assertQueue.lastCall.args).to.eql(['dog']);
+
+                expect(channel.bindQueue.calledOnce).to.be.true;
+                expect(channel.bindQueue.lastCall.args).to.eql(['dog', 'bone']);
+
+                expect(channel.assertExchange.calledOnce).to.be.true;
+                expect(channel.assertExchange.lastCall.args).to.eql(['bone']);
+            });
+    });
+
+    it('should ignore assertQueue, bindQueue, assertExchange if we are disconnected', function() {
+        const channelWrapper = new ChannelWrapper(connectionManager);
+        channelWrapper.assertQueue('dog', true);
+        channelWrapper.bindQueue('dog', 'bone', true);
+        channelWrapper.assertExchange('bone', true);
+    });
+
     // Not much to test here - just make sure we don't throw any exceptions or anything weird.  :)
 
     it('clean up when closed', function() {

@@ -428,4 +428,14 @@ export default class ChannelWrapper extends EventEmitter {
     assertQueue() {
         return this._channel && this._channel.assertQueue.apply(this._channel, arguments);
     }
+
+    // Send a `bindQueue` to the underlying channel.
+    bindQueue() {
+        return this._channel && this._channel.bindQueue.apply(this._channel, arguments);
+    }
+
+    // Send a `assertExchange` to the underlying channel.
+    assertExchange() {
+        return this._channel && this._channel.assertExchange.apply(this._channel, arguments);
+    }
 }
