@@ -71,6 +71,12 @@ export class FakeConfirmChannel extends EventEmitter {
 
         this.nackAll = sinon.spy(function(requeue) {}); // eslint-disable-line
 
+        this.assertQueue = sinon.spy(function(queue, options) {}); //eslint-disable-line
+
+        this.bindQueue = sinon.spy(function(queue, source, pattern, args) {}); //eslint-disable-line
+
+        this.assertExchange = sinon.spy(function(exchange, type, options) {}); //eslint-disable-line
+
         this.close = sinon.spy(() => this.emit('close'));
     }
 }
