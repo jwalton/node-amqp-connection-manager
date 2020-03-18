@@ -31,7 +31,7 @@
     "greenkeeper-lockfile": "^1.14.0",
     "husky": "^4.0.2",
     "istanbul": "^0.4.0",
-    "mocha": "^6.1.4",
+    "mocha": "^7.1.1",
     "nyc": "^14.0.0",
     "promise-tools": "^2.0.0",
     "proxyquire": "^2.0.1",
