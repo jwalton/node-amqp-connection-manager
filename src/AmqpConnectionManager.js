@@ -82,6 +82,11 @@ export default class AmqpConnectionManager extends EventEmitter {
         if(this._closed) { return Promise.resolve(); }
         this._closed = true;
 
+        if(this._cancelRetriesHandler) { 
+          this._cancelRetriesHandler();
+          this._cancelRetriesHandler = null;
+        }
+
         return Promise.resolve(this._connectPromise).then(() => {
             return Promise.all(this._channels.map(channel => channel.close()))
             .catch(function() {
@@ -175,10 +180,14 @@ export default class AmqpConnectionManager extends EventEmitter {
                     this._currentConnection = null;
                     this.emit('disconnect', { err });
 
-                    wait(this.reconnectTimeInSeconds * 1000)
-                    .then(() => this._connect())
-                    // `_connect()` should never throw.
-                    .catch(neverThrows);
+                    const handle = wait(this.reconnectTimeInSeconds * 1000);
+                    this._cancelRetriesHandler = handle.cancel;
+
+                    handle
+                      .promise()
+                      .then(() => this._connect())
+                      // `_connect()` should never throw.
+                      .catch(neverThrows);
                 });
 
                 this._connectPromise = null;
@@ -195,10 +204,10 @@ export default class AmqpConnectionManager extends EventEmitter {
             this._connectPromise = null;
 
             // TODO: Probably want to try right away here, especially if there are multiple brokers to try...
-            return wait(this.reconnectTimeInSeconds * 1000)
-            .then(() => {
-                return this._connect();
-            });
+            const handle = wait(this.reconnectTimeInSeconds * 1000);
+            this._cancelRetriesHandler = handle.cancel;
+
+            return handle.promise().then(() => this._connect());
         });
 
         return this._connectPromise;
