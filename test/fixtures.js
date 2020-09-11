@@ -131,7 +131,7 @@ export class FakeAmqpConnectionManager extends EventEmitter {
         this._currentConnection = null;
         this.connected = false;
         this.emit('disconnect', {
-            err:new Error(('Boom!'))
+            err: new Error(('Boom!'))
         });
     }
 }
