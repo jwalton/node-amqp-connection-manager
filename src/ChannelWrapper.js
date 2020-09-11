@@ -166,6 +166,23 @@ export default class ChannelWrapper extends EventEmitter {
         // Place to store published, but not yet confirmed messages
         this._unconfirmedMessages = [];
 
+        // Place to store reason code during publish or sendtoqueue messages.
+        this._irrecoverableCode = null;
+        // Irrecoverable error.
+        this._irrecoverableError = [
+          403, // AMQP Access Refused Error.
+          404, // AMQP Not Found Error.
+          406, // AMQP Precondition Failed Error.
+          501, // AMQP Frame Error.
+          502, // AMQP Frame Syntax Error.
+          503, // AMQP Invalid Command Error.
+          504, // AMQP Channel Not Open Error.
+          505, // AMQP Unexpected Frame.
+          530, // AMQP Not Allowed Error.
+          540, // AMQP Not Implemented Error.
+          541, // AMQP Internal Error.
+        ];
+
         // True if the "worker" is busy sending messages.  False if we need to
         // start the worker to get stuff done.
         this._working = false;
@@ -202,6 +219,7 @@ export default class ChannelWrapper extends EventEmitter {
     // Called whenever we connect to the broker.
     _onConnect({ connection }) {
         this._connection = connection;
+        this._irrecoverableCode = null;
 
         return connection.createConfirmChannel()
         .then(channel => {
@@ -261,7 +279,8 @@ export default class ChannelWrapper extends EventEmitter {
     // Wait for another reconnect to create a new channel.
 
     // Called whenever we disconnect from the AMQP server.
-    _onDisconnect() {
+    _onDisconnect(ex) {
+        this._irrecoverableCode = ((ex.err instanceof Error) ? ex.err.code : null) || null;
         this._channel = null;
         this._settingUp = null;
 
@@ -314,6 +333,11 @@ export default class ChannelWrapper extends EventEmitter {
             this._workerNumber++;
             this._publishQueuedMessages(this._workerNumber);
         }
+    }
+
+    // Define if a message can cause irrecoverable error
+    _canWaitReconnection() {
+      return ! this._irrecoverableError.includes(this._irrecoverableCode);
     }
 
     _publishQueuedMessages(workerNumber) {
@@ -374,7 +398,7 @@ export default class ChannelWrapper extends EventEmitter {
             },
 
             err => {
-                if(!this._channel) {
+                if(!this._channel && this._canWaitReconnection()) {
                     // Tried to write to a closed channel.  Leave the message in the queue and we'll try again when we
                     // reconnect.
                     this._messages.unshift(this._unconfirmedMessages.shift());

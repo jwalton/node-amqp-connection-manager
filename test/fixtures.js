@@ -14,6 +14,7 @@ export class FakeAmqp {
         this.connection.emit('close', new Error("Connection closed"));
     }
 
+
     simulateRemoteBlock() {
         this.connection.emit('blocked', new Error("Connection blocked"));
     }
@@ -118,11 +119,19 @@ export class FakeAmqpConnectionManager extends EventEmitter {
         });
     }
 
+    simulateRemoteCloseEx(err) {
+        this.emit('disconnect', {
+            err,
+        });
+        this.emit('error', err);
+        this.emit('close', err);
+    }
+
     simulateDisconnect() {
         this._currentConnection = null;
         this.connected = false;
         this.emit('disconnect', {
-            err: new Error(('Boom!'))
+          err:new Error('Boom!')
         });
     }
 }

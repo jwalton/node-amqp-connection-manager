@@ -646,6 +646,59 @@ describe('ChannelWrapper', function() {
             }).then(() => expect(publishCalls).to.equal(2));
     });
 
+    it('should emit an error, we disconnect during publish with code 502 (AMQP Frame Syntax Error)', function() {
+        connectionManager.simulateConnect();
+        const err =  new Error('AMQP Frame Syntax Error');
+        err.code = 502;
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup(channel) {
+                channel.publish = function(a, b, c, d, cb) {
+                  connectionManager.simulateRemoteCloseEx(err);
+                  cb();
+                };
+                return Promise.resolve();
+            }
+        });
+
+        return channelWrapper.waitForConnect()
+            .then(() => channelWrapper.publish('exchange', 'routingKey', 'content'))
+            .then(function() {
+            }).catch((e) => {
+               expect(err).to.equal(e);
+            });
+    });
+
+    it('should retry, we disconnect during publish with code 320 (AMQP Connection Forced Error)', function() {
+        let publishCalls = 0;
+        let p1 = null;
+        connectionManager.simulateConnect();
+        const err =  new Error('AMQP Frame Syntax Error');
+        err.code = 320;
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup(channel) {
+                channel.publish = function(a, b, c, d, cb) {
+                  publishCalls++;
+                  if(publishCalls === 1) {
+                    // Never reply, this channel is disconnected
+                    connectionManager.simulateRemoteCloseEx(err);
+                  } else {
+                    cb();
+                  }
+                };
+                return Promise.resolve();
+            }
+        });
+
+        return channelWrapper.waitForConnect()
+            .then(function() {
+                p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
+                return promiseTools.delay(10);
+            }).then(function() {
+                connectionManager.simulateConnect();
+                return p1;
+            }).then(() => expect(publishCalls).to.equal(2));
+    });
+
     it('should publish enqued messages to the underlying channel without waiting for confirms', function() {
         connectionManager.simulateConnect();
         let p1, p2;
