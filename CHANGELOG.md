@@ -1,3 +1,11 @@
+## [3.2.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.0...v3.2.1) (2020-09-12)
+
+
+### Bug Fixes
+
+* Push never resolves if error occured (courtesy @SSANSH). ([48a78f8](https://github.com/jwalton/node-amqp-connection-manager/commit/48a78f8de5d39002035b37f27fc3e0ce5015490c))
+* **package:** resolve hanging retry connection timeout by introducing cancelable timeout ([e37dd1a](https://github.com/jwalton/node-amqp-connection-manager/commit/e37dd1a4e423012910d31ae8bcebf781cac6f3b5))
+
 # [3.2.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.1.1...v3.2.0) (2020-01-20)
 
 
