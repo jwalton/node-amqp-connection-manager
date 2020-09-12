@@ -60,7 +60,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/benbria/node-amqp-connection-manager"
+    "url": "https://github.com/jwalton/node-amqp-connection-manager"
   },
   "keywords": [
     "amqp",
@@ -71,7 +71,7 @@
   "author": "Jason Walton <dev@lucid.thedreaming.org> (https://github.com/jwalton)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/benbria/node-amqp-connection-manager/issues"
+    "url": "https://github.com/jwalton/node-amqp-connection-manager/issues"
   },
-  "homepage": "https://github.com/benbria/node-amqp-connection-manager"
+  "homepage": "https://github.com/jwalton/node-amqp-connection-manager"
 }
