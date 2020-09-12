@@ -15,7 +15,21 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm install
       - run: npm test
-      - run: 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ SECRETS.GITHUB_TOKEN }}
+          flag-name: run-${{ matrix.node-version }}
+          parallel: true
+  coveralls:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ SECRETS.GITHUB_TOKEN }}
+          parallel-finished: true
   release:
     # Only release on push to master
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
