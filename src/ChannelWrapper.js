@@ -467,4 +467,9 @@ export default class ChannelWrapper extends EventEmitter {
     assertExchange() {
         return this._channel && this._channel.assertExchange.apply(this._channel, arguments);
     }
+
+    // Send a `get` to the underlying channel.
+    get() {
+        return this._channel && this._channel.get.apply(this._channel, arguments);
+    }
 }
