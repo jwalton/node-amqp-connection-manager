@@ -613,6 +613,45 @@ describe('ChannelWrapper', function() {
         await expect(p2).to.be.rejectedWith('no send');
     });
 
+    it('should reject correct message if broker rejects out of order', async function() {
+        connectionManager.simulateConnect();
+
+        const callbacks = [];
+
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup(channel) {
+                channel.publish = (a, b, message, d, cb) => callbacks.push({message, cb});
+                return Promise.resolve();
+            }
+        });
+
+        await channelWrapper.waitForConnect();
+
+        channelWrapper.publish('exchange', 'routingKey', 'content1');
+        const p2 = channelWrapper.publish('exchange', 'routingKey', 'content2');
+
+        // Wait for both messages to be sent.
+        while(callbacks.length < 2) {
+            await promiseTools.delay(10);
+        }
+
+        // Nack the second message.
+        callbacks.find(c => c.message === "content2").cb(new Error("boom"));
+        await expect(p2).to.be.rejectedWith('boom');
+
+        // Simulate a disconnect and reconnect.
+        connectionManager.simulateDisconnect();
+        await promiseTools.delay(10);
+        connectionManager.simulateConnect();
+        while(callbacks.length < 3) {
+            await promiseTools.delay(10);
+        }
+
+        // Make sure the first message is resent.
+        const resent = callbacks[callbacks.length - 1];
+        expect(resent.message).to.equal("content1");
+    });
+
     it('should keep sending messages, even if we disconnect in the middle of sending', function() {
         let publishCalls = 0;
         let p1 = null;

@@ -393,7 +393,7 @@ export default class ChannelWrapper extends EventEmitter {
         })
         .then(
             result => {
-                this._unconfirmedMessages.shift();
+                removeUnconfirmedMessage(this._unconfirmedMessages, message);
                 message.resolve(result);
             },
 
@@ -401,11 +401,12 @@ export default class ChannelWrapper extends EventEmitter {
                 if(!this._channel && this._canWaitReconnection()) {
                     // Tried to write to a closed channel.  Leave the message in the queue and we'll try again when we
                     // reconnect.
-                    this._messages.unshift(this._unconfirmedMessages.shift());
+                    removeUnconfirmedMessage(this._unconfirmedMessages, message);
+                    this._messages.unshift(message);
                 } else {
                     // Something went wrong trying to send this message - could be JSON.stringify failed, could be the
                     // broker rejected the message.  Either way, reject it back
-                    this._unconfirmedMessages.shift();
+                    removeUnconfirmedMessage(this._unconfirmedMessages, message);
                     message.reject(err);
                 }
             }
@@ -472,4 +473,13 @@ export default class ChannelWrapper extends EventEmitter {
     get() {
         return this._channel && this._channel.get.apply(this._channel, arguments);
     }
+}
+
+function removeUnconfirmedMessage(arr, message) {
+    const toRemove = arr.indexOf(message);
+    if (toRemove === -1) {
+        throw new Error(`Message is not in _unconfirmedMessages!`);
+    }
+    const removed = arr.splice(toRemove, 1);
+    return removed[0];
 }
