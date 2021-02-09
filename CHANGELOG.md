@@ -1,3 +1,10 @@
+## [3.2.2](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.1...v3.2.2) (2021-02-09)
+
+
+### Bug Fixes
+
+* When messages are acked/nacked, make sure we remove the correct message from the sent messages queue. ([c662026](https://github.com/jwalton/node-amqp-connection-manager/commit/c662026bc287e684a0f43ce2de7a44b80a88e8ff)), closes [#142](https://github.com/jwalton/node-amqp-connection-manager/issues/142)
+
 ## [3.2.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.0...v3.2.1) (2020-09-12)
 
 
