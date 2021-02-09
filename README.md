@@ -11,13 +11,15 @@ Connection management for amqplib.
 
 # amqp-connection-manager
 
+This is a wrapper around [amqplib](http://www.squaremobius.net/amqp.node/) which provides automatic reconnects.
+
 ## Features
 
-* Automatically reconnect when your amqplib broker dies in a fire.
+* Automatically reconnect when your [amqplib](http://www.squaremobius.net/amqp.node/) broker dies in a fire.
 * Round-robin connections between multiple brokers in a cluster.
 * If messages are sent while the broker is unavailable, queues messages in memory until we reconnect.
 * Supports both promises and callbacks (using [promise-breaker](https://github.com/jwalton/node-promise-breaker))
-* Very un-opinionated library - a thin wrapper around amqplib.
+* Very un-opinionated library - a thin wrapper around [amqplib](http://www.squaremobius.net/amqp.node/).
 
 ## Installation
 
