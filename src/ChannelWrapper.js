@@ -34,12 +34,12 @@ export default class ChannelWrapper extends EventEmitter {
      * @param {function} [done] - callback.
      * @returns {void | Promise} - Resolves when complete.
      */
-    addSetup(setup, done=null) {
-        return pb.addCallback(done,
-            (this._settingUp || Promise.resolve())
-            .then(() => {
+    addSetup(setup, done = null) {
+        return pb.addCallback(
+            done,
+            (this._settingUp || Promise.resolve()).then(() => {
                 this._setups.push(setup);
-                if(this._channel) {
+                if (this._channel) {
                     return pb.call(setup, this, this._channel);
                 } else {
                     return undefined;
@@ -59,14 +59,12 @@ export default class ChannelWrapper extends EventEmitter {
      * @param {function} [done] - Optional callback.
      * @returns {void | Promise} - Resolves when complete.
      */
-    removeSetup(setup, teardown=null, done=null) {
+    removeSetup(setup, teardown = null, done = null) {
         return pb.addCallback(done, () => {
-            this._setups = this._setups.filter(s => s !== setup);
+            this._setups = this._setups.filter((s) => s !== setup);
 
-            return (this._settingUp || Promise.resolve())
-            .then(() => this._channel
-                ? pb.call(teardown, this, this._channel)
-                : undefined
+            return (this._settingUp || Promise.resolve()).then(() =>
+                this._channel ? pb.call(teardown, this, this._channel) : undefined
             );
         });
     }
@@ -78,11 +76,12 @@ export default class ChannelWrapper extends EventEmitter {
      * @param {function} [done] - Optional callback.
      * @returns {void | Promise} - Resolves when connected.
      */
-    waitForConnect(done=null) {
-        return pb.addCallback(done,
-            (this._channel && !this._settingUp)
+    waitForConnect(done = null) {
+        return pb.addCallback(
+            done,
+            this._channel && !this._settingUp
                 ? Promise.resolve()
-                : new Promise(resolve => this.once('connect', resolve))
+                : new Promise((resolve) => this.once('connect', resolve))
         );
     }
 
@@ -97,19 +96,22 @@ export default class ChannelWrapper extends EventEmitter {
      * can't be encoded, or if the broker rejects the message for some reason.
      *
      */
-    publish(exchange, routingKey, content, options, done=null) {
-        return pb.addCallback(done, new Promise((resolve, reject) => {
-            this._messages.push({
-                type: 'publish',
-                exchange,
-                routingKey,
-                content,
-                options,
-                resolve,
-                reject
-            });
-            this._startWorker();
-        }));
+    publish(exchange, routingKey, content, options, done = null) {
+        return pb.addCallback(
+            done,
+            new Promise((resolve, reject) => {
+                this._messages.push({
+                    type: 'publish',
+                    exchange,
+                    routingKey,
+                    content,
+                    options,
+                    resolve,
+                    reject,
+                });
+                this._startWorker();
+            })
+        );
     }
 
     /*
@@ -121,18 +123,21 @@ export default class ChannelWrapper extends EventEmitter {
      *
      * `message` here should be a JSON-able object.
      */
-    sendToQueue(queue, content, options, done=null) {
-        return pb.addCallback(done, new Promise((resolve, reject) => {
-            this._messages.push({
-                type: 'sendToQueue',
-                queue,
-                content,
-                options,
-                resolve,
-                reject
-            });
-            return this._startWorker();
-        }));
+    sendToQueue(queue, content, options, done = null) {
+        return pb.addCallback(
+            done,
+            new Promise((resolve, reject) => {
+                this._messages.push({
+                    type: 'sendToQueue',
+                    queue,
+                    content,
+                    options,
+                    resolve,
+                    reject,
+                });
+                return this._startWorker();
+            })
+        );
     }
 
     /**
@@ -158,7 +163,7 @@ export default class ChannelWrapper extends EventEmitter {
 
         this.context = {};
 
-        this._json = ('json' in options) ? options.json : false;
+        this._json = 'json' in options ? options.json : false;
 
         // Place to store queued messages.
         this._messages = [];
@@ -170,17 +175,17 @@ export default class ChannelWrapper extends EventEmitter {
         this._irrecoverableCode = null;
         // Irrecoverable error.
         this._irrecoverableError = [
-          403, // AMQP Access Refused Error.
-          404, // AMQP Not Found Error.
-          406, // AMQP Precondition Failed Error.
-          501, // AMQP Frame Error.
-          502, // AMQP Frame Syntax Error.
-          503, // AMQP Invalid Command Error.
-          504, // AMQP Channel Not Open Error.
-          505, // AMQP Unexpected Frame.
-          530, // AMQP Not Allowed Error.
-          540, // AMQP Not Implemented Error.
-          541, // AMQP Internal Error.
+            403, // AMQP Access Refused Error.
+            404, // AMQP Not Found Error.
+            406, // AMQP Precondition Failed Error.
+            501, // AMQP Frame Error.
+            502, // AMQP Frame Syntax Error.
+            503, // AMQP Invalid Command Error.
+            504, // AMQP Channel Not Open Error.
+            505, // AMQP Unexpected Frame.
+            530, // AMQP Not Allowed Error.
+            540, // AMQP Not Implemented Error.
+            541, // AMQP Internal Error.
         ];
 
         // True if the "worker" is busy sending messages.  False if we need to
@@ -203,13 +208,13 @@ export default class ChannelWrapper extends EventEmitter {
 
         // Array of setup functions to call.
         this._setups = [];
-        if(options.setup) {
+        if (options.setup) {
             this._setups.push(options.setup);
         }
 
-        if(connectionManager.isConnected()) {
+        if (connectionManager.isConnected()) {
             this._onConnect({
-                connection: this._connectionManager._currentConnection
+                connection: this._connectionManager._currentConnection,
             });
         }
         connectionManager.on('connect', this._onConnect);
@@ -221,58 +226,56 @@ export default class ChannelWrapper extends EventEmitter {
         this._connection = connection;
         this._irrecoverableCode = null;
 
-        return connection.createConfirmChannel()
-        .then(channel => {
-            this._channel = channel;
-            channel.on('close', () => this._onChannelClose(channel));
+        return connection
+            .createConfirmChannel()
+            .then((channel) => {
+                this._channel = channel;
+                channel.on('close', () => this._onChannelClose(channel));
 
-            this._settingUp = Promise.all(
-                this._setups.map(setupFn =>
-                    // TODO: Use a timeout here to guard against setupFns that never resolve?
-                    pb.call(setupFn, this, channel)
-                    .catch(err => {
-                        if(this._channel) {
-                            this.emit('error', err, { name: this.name });
-                        } else {
-                            // Don't emit an error if setups failed because the channel was closing.
-                        }
-                    })
-                )
+                this._settingUp = Promise.all(
+                    this._setups.map((setupFn) =>
+                        // TODO: Use a timeout here to guard against setupFns that never resolve?
+                        pb.call(setupFn, this, channel).catch((err) => {
+                            if (this._channel) {
+                                this.emit('error', err, { name: this.name });
+                            } else {
+                                // Don't emit an error if setups failed because the channel was closing.
+                            }
+                        })
+                    )
+                ).then(() => {
+                    this._settingUp = null;
+                    return this._channel;
+                });
 
-            )
+                return this._settingUp;
+            })
             .then(() => {
-                this._settingUp = null;
-                return this._channel;
-            });
-
-            return this._settingUp;
-        })
-        .then(() => {
-            if(!this._channel) {
-                // Can happen if channel closes while we're setting up.
-                return;
-            }
-            if (this._unconfirmedMessages.length > 0) {
-                // requeu any messages that were left unconfirmed when connection was lost
-                while (this._unconfirmedMessages.length) {
-                    this._messages.push(this._unconfirmedMessages.shift());
+                if (!this._channel) {
+                    // Can happen if channel closes while we're setting up.
+                    return;
                 }
-            }
+                if (this._unconfirmedMessages.length > 0) {
+                    // requeu any messages that were left unconfirmed when connection was lost
+                    while (this._unconfirmedMessages.length) {
+                        this._messages.push(this._unconfirmedMessages.shift());
+                    }
+                }
 
-            // Since we just connected, publish any queued messages
-            this._startWorker();
-            this.emit('connect');
-        })
-        .catch(err => {
-            this.emit('error', err, { name: this.name });
-            this._settingUp = null;
-            this._channel = null;
-        });
+                // Since we just connected, publish any queued messages
+                this._startWorker();
+                this.emit('connect');
+            })
+            .catch((err) => {
+                this.emit('error', err, { name: this.name });
+                this._settingUp = null;
+                this._channel = null;
+            });
     }
 
     // Called whenever the channel closes.
     _onChannelClose(channel) {
-        if(this._channel === channel) {
+        if (this._channel === channel) {
             this._channel = null;
         }
     }
@@ -280,7 +283,7 @@ export default class ChannelWrapper extends EventEmitter {
 
     // Called whenever we disconnect from the AMQP server.
     _onDisconnect(ex) {
-        this._irrecoverableCode = ((ex.err instanceof Error) ? ex.err.code : null) || null;
+        this._irrecoverableCode = (ex.err instanceof Error ? ex.err.code : null) || null;
         this._channel = null;
         this._settingUp = null;
 
@@ -299,16 +302,17 @@ export default class ChannelWrapper extends EventEmitter {
     // Any unsent messages will have their associated Promises rejected.
     //
     close() {
-        return Promise.resolve()
-        .then(() => {
+        return Promise.resolve().then(() => {
             this._working = false;
-            if(this._messages.length !== 0) {
+            if (this._messages.length !== 0) {
                 // Reject any unsent messages.
-                this._messages.forEach(message => message.reject(new Error('Channel closed')));
+                this._messages.forEach((message) => message.reject(new Error('Channel closed')));
             }
-            if(this._unconfirmedMessages.length !== 0) {
+            if (this._unconfirmedMessages.length !== 0) {
                 // Reject any unconfirmed messages.
-                this._unconfirmedMessages.forEach(message => message.reject(new Error('Channel closed')));
+                this._unconfirmedMessages.forEach((message) =>
+                    message.reject(new Error('Channel closed'))
+                );
             }
 
             this._connectionManager.removeListener('connect', this._onConnect);
@@ -323,12 +327,12 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     _shouldPublish() {
-        return (this._messages.length > 0) && !this._settingUp && this._channel;
+        return this._messages.length > 0 && !this._settingUp && this._channel;
     }
 
     // Start publishing queued messages, if there isn't already a worker doing this.
     _startWorker() {
-        if(!this._working && this._shouldPublish()) {
+        if (!this._working && this._shouldPublish()) {
             this._working = true;
             this._workerNumber++;
             this._publishQueuedMessages(this._workerNumber);
@@ -337,11 +341,11 @@ export default class ChannelWrapper extends EventEmitter {
 
     // Define if a message can cause irrecoverable error
     _canWaitReconnection() {
-      return ! this._irrecoverableError.includes(this._irrecoverableCode);
+        return !this._irrecoverableError.includes(this._irrecoverableCode);
     }
 
     _publishQueuedMessages(workerNumber) {
-        if(!this._shouldPublish() || !this._working || (workerNumber !== this._workerNumber)) {
+        if (!this._shouldPublish() || !this._working || workerNumber !== this._workerNumber) {
             // Can't publish anything right now...
             this._working = false;
             return Promise.resolve();
@@ -352,71 +356,84 @@ export default class ChannelWrapper extends EventEmitter {
         this._unconfirmedMessages.push(message);
 
         Promise.resolve()
-        .then(() => {
-            const encodedMessage = this._json ? new Buffer.from(JSON.stringify(message.content)) : message.content;
+            .then(() => {
+                const encodedMessage = this._json
+                    ? new Buffer.from(JSON.stringify(message.content))
+                    : message.content;
 
-            let result = true;
-            const sendPromise = (() => {
-                switch (message.type) {
-                    case 'publish':
-                        return new Promise(function(resolve, reject) {
-                            result = channel.publish(message.exchange, message.routingKey, encodedMessage,
-                                message.options,
-                                err => {
-                                    if(err) {
-                                        reject(err);
-                                    } else {
-                                        setImmediate(() => resolve(result));
+                let result = true;
+                const sendPromise = (() => {
+                    switch (message.type) {
+                        case 'publish':
+                            return new Promise(function (resolve, reject) {
+                                result = channel.publish(
+                                    message.exchange,
+                                    message.routingKey,
+                                    encodedMessage,
+                                    message.options,
+                                    (err) => {
+                                        if (err) {
+                                            reject(err);
+                                        } else {
+                                            setImmediate(() => resolve(result));
+                                        }
                                     }
-                                });
-                        });
-                    case 'sendToQueue':
-                        return new Promise(function(resolve, reject) {
-                            result = channel.sendToQueue(message.queue, encodedMessage, message.options, err => {
-                                if(err) {
-                                    reject(err);
-                                } else {
-                                    setImmediate(() => resolve(result));
-                                }
+                                );
                             });
-                        });
-                    /* istanbul ignore next */
-                    default:
-                        throw new Error(`Unhandled message type ${message.type}`);
-                }
-            })();
+                        case 'sendToQueue':
+                            return new Promise(function (resolve, reject) {
+                                result = channel.sendToQueue(
+                                    message.queue,
+                                    encodedMessage,
+                                    message.options,
+                                    (err) => {
+                                        if (err) {
+                                            reject(err);
+                                        } else {
+                                            setImmediate(() => resolve(result));
+                                        }
+                                    }
+                                );
+                            });
+                        /* istanbul ignore next */
+                        default:
+                            throw new Error(`Unhandled message type ${message.type}`);
+                    }
+                })();
 
-            if(result) {
-                this._publishQueuedMessages(workerNumber);
-            } else {
-                this._channel.once('drain', ()=>this._publishQueuedMessages(workerNumber))
-            }
-            return sendPromise;
-        })
-        .then(
-            result => {
-                removeUnconfirmedMessage(this._unconfirmedMessages, message);
-                message.resolve(result);
-            },
-
-            err => {
-                if(!this._channel && this._canWaitReconnection()) {
-                    // Tried to write to a closed channel.  Leave the message in the queue and we'll try again when we
-                    // reconnect.
-                    removeUnconfirmedMessage(this._unconfirmedMessages, message);
-                    this._messages.unshift(message);
+                if (result) {
+                    this._publishQueuedMessages(workerNumber);
                 } else {
-                    // Something went wrong trying to send this message - could be JSON.stringify failed, could be the
-                    // broker rejected the message.  Either way, reject it back
-                    removeUnconfirmedMessage(this._unconfirmedMessages, message);
-                    message.reject(err);
+                    this._channel.once('drain', () => this._publishQueuedMessages(workerNumber));
                 }
-            }
-        )
-        .catch( /* istanbul ignore next */ err => {
-            this.emit('error', err);
-            this._working = false;
-        });
+                return sendPromise;
+            })
+            .then(
+                (result) => {
+                    removeUnconfirmedMessage(this._unconfirmedMessages, message);
+                    message.resolve(result);
+                },
+
+                (err) => {
+                    if (!this._channel && this._canWaitReconnection()) {
+                        // Tried to write to a closed channel.  Leave the message in the queue and we'll try again when we
+                        // reconnect.
+                        removeUnconfirmedMessage(this._unconfirmedMessages, message);
+                        this._messages.unshift(message);
+                    } else {
+                        // Something went wrong trying to send this message - could be JSON.stringify failed, could be the
+                        // broker rejected the message.  Either way, reject it back
+                        removeUnconfirmedMessage(this._unconfirmedMessages, message);
+                        message.reject(err);
+                    }
+                }
+            )
+            .catch(
+                /* istanbul ignore next */ (err) => {
+                    this.emit('error', err);
+                    this._working = false;
+                }
+            );
 
         return null;
     }

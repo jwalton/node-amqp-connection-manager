@@ -5,7 +5,7 @@ export function connect(urls, options) {
 }
 
 const amqp = {
-    connect
+    connect,
 };
 
 export default amqp;

@@ -1,5 +1,5 @@
 import chai from 'chai';
-const {expect}   = chai;
+const { expect } = chai;
 
 import proxyquire from 'proxyquire';
 
@@ -11,13 +11,12 @@ class FakeAmqpConnectionManager {
 }
 
 const index = proxyquire('../src/index', {
-    './AmqpConnectionManager': {default: FakeAmqpConnectionManager}
+    './AmqpConnectionManager': { default: FakeAmqpConnectionManager },
 });
 
 describe('index', () =>
-    it('should create AmqpConnectionManagers', function() {
-        const amqp = index.connect(['amqp://localhost'], {option: 'hello'});
+    it('should create AmqpConnectionManagers', function () {
+        const amqp = index.connect(['amqp://localhost'], { option: 'hello' });
         expect(amqp.urls).to.eql(['amqp://localhost']);
-        expect(amqp.options).to.eql({option: 'hello'});
-    })
-);
+        expect(amqp.options).to.eql({ option: 'hello' });
+    }));

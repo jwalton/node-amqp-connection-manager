@@ -2,21 +2,22 @@ import { EventEmitter } from 'events';
 import sinon from 'sinon';
 
 export class FakeAmqp {
-    constructor() { this.reset(); }
+    constructor() {
+        this.reset();
+    }
 
     kill() {
-        const err = new Error("Died in a fire");
+        const err = new Error('Died in a fire');
         this.connection.emit('error', err);
         this.connection.emit('close', err);
     }
 
     simulateRemoteClose() {
-        this.connection.emit('close', new Error("Connection closed"));
+        this.connection.emit('close', new Error('Connection closed'));
     }
 
-
     simulateRemoteBlock() {
-        this.connection.emit('blocked', new Error("Connection blocked"));
+        this.connection.emit('blocked', new Error('Connection blocked'));
     }
 
     simulateRemoteUnblock() {
@@ -28,18 +29,18 @@ export class FakeAmqp {
         this.url = null;
         this.failConnections = false;
         this.deadServers = [];
-        this.connect = sinon.spy(url => {
-            if(this.failConnections) {
+        this.connect = sinon.spy((url) => {
+            if (this.failConnections) {
                 return Promise.reject(new Error('No'));
             }
 
             let allowConnection = true;
-            this.deadServers.forEach(deadUrl => {
-                if(url.startsWith(deadUrl)) {
+            this.deadServers.forEach((deadUrl) => {
+                if (url.startsWith(deadUrl)) {
                     allowConnection = false;
                 }
             });
-            if(!allowConnection) {
+            if (!allowConnection) {
                 return Promise.reject(new Error(`Dead server ${url}`));
             }
 
@@ -64,19 +65,19 @@ export class FakeConfirmChannel extends EventEmitter {
             return true;
         });
 
-        this.ack = sinon.spy(function(message, allUpTo) {}); // eslint-disable-line
+        this.ack = sinon.spy(function (message, allUpTo) {}); // eslint-disable-line
 
-        this.ackAll = sinon.spy(function() {}); // eslint-disable-line
+        this.ackAll = sinon.spy(function () {}); // eslint-disable-line
 
-        this.nack = sinon.spy(function(message, allUpTo, requeue) {}); ; // eslint-disable-line
+        this.nack = sinon.spy(function (message, allUpTo, requeue) {}); // eslint-disable-line
 
-        this.nackAll = sinon.spy(function(requeue) {}); // eslint-disable-line
+        this.nackAll = sinon.spy(function (requeue) {}); // eslint-disable-line
 
-        this.assertQueue = sinon.spy(function(queue, options) {}); //eslint-disable-line
+        this.assertQueue = sinon.spy(function (queue, options) {}); //eslint-disable-line
 
-        this.bindQueue = sinon.spy(function(queue, source, pattern, args) {}); //eslint-disable-line
+        this.bindQueue = sinon.spy(function (queue, source, pattern, args) {}); //eslint-disable-line
 
-        this.assertExchange = sinon.spy(function(exchange, type, options) {}); //eslint-disable-line
+        this.assertExchange = sinon.spy(function (exchange, type, options) {}); //eslint-disable-line
 
         this.close = sinon.spy(() => this.emit('close'));
     }
@@ -90,7 +91,7 @@ export class FakeConnection extends EventEmitter {
     }
 
     createConfirmChannel() {
-        return Promise.resolve(new exports.FakeConfirmChannel);
+        return Promise.resolve(new exports.FakeConfirmChannel());
     }
 
     close() {
@@ -115,7 +116,7 @@ export class FakeAmqpConnectionManager extends EventEmitter {
         this.connected = true;
         this.emit('connect', {
             connection: this._currentConnection,
-            url
+            url,
         });
     }
 
@@ -131,7 +132,7 @@ export class FakeAmqpConnectionManager extends EventEmitter {
         this._currentConnection = null;
         this.connected = false;
         this.emit('disconnect', {
-            err: new Error(('Boom!'))
+            err: new Error('Boom!'),
         });
     }
 }
