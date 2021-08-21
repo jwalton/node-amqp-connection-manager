@@ -633,8 +633,14 @@ describe('ChannelWrapper', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
             setup(channel) {
-                channel.publish = (a, b, c, d, cb) => cb(new Error('no publish'));
-                channel.sendToQueue = (a, b, c, cb) => cb(new Error('no send'));
+                channel.publish = (a, b, c, d, cb) => {
+                    cb(new Error('no publish'));
+                    return true;
+                };
+                channel.sendToQueue = (a, b, c, cb) => {
+                    cb(new Error('no send'));
+                    return true;
+                };
                 return Promise.resolve();
             },
         });
@@ -786,7 +792,7 @@ describe('ChannelWrapper', function () {
         let p1, p2;
         const channelWrapper = new ChannelWrapper(connectionManager, {
             setup(channel) {
-                channel.publish = sinon.stub();
+                channel.publish = sinon.stub().callsFake(() => true);
                 return Promise.resolve();
             },
         });
