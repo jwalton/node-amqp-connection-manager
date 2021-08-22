@@ -1,8 +1,8 @@
 import chai from 'chai';
-import chaiString from 'chai-string';
 import chaiAsPromised from 'chai-as-promised';
-import sinon from 'sinon';
+import chaiString from 'chai-string';
 import * as promiseTools from 'promise-tools';
+import sinon from 'sinon';
 import * as fixtures from './fixtures';
 
 chai.use(chaiString);
@@ -787,7 +787,7 @@ describe('ChannelWrapper', function () {
             .then(() => expect(publishCalls).to.equal(2));
     });
 
-    it('should publish enqued messages to the underlying channel without waiting for confirms', function () {
+    it('should publish queued messages to the underlying channel without waiting for confirms', function () {
         connectionManager.simulateConnect();
         let p1, p2;
         const channelWrapper = new ChannelWrapper(connectionManager, {
@@ -810,5 +810,43 @@ describe('ChannelWrapper', function () {
                 expect(p1).to.not.be.fulfilled;
                 expect(p2).to.not.be.fulfilled;
             });
+    });
+
+    it('should stop publishing messages to the queue when the queue is full', async function () {
+        const queue = [];
+        let innerChannel;
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel) {
+                innerChannel = channel;
+                channel.publish = sinon
+                    .stub()
+                    .callsFake((_exchage, _routingKey, content, _options, callback) => {
+                        channel.emit('publish', content);
+                        queue.push(() => callback(null));
+                        return queue.length < 2;
+                    });
+            },
+        });
+
+        await channelWrapper.waitForConnect();
+
+        channelWrapper.publish('exchange', 'routingKey', 'msg:1');
+        channelWrapper.publish('exchange', 'routingKey', 'msg:2');
+        channelWrapper.publish('exchange', 'routingKey', 'msg:3');
+        await promiseTools.delay(10);
+
+        // Only two messages should have been published to the underlying queue.
+        expect(queue.length).to.equal(2);
+
+        // Simulate queue draining.
+        queue.pop()();
+        innerChannel.emit('drain');
+
+        await promiseTools.delay(10);
+
+        // Final message should have been published to the underlying queue.
+        expect(queue.length).to.equal(2);
     });
 });
