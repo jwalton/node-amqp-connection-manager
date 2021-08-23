@@ -496,9 +496,7 @@ export default class ChannelWrapper extends EventEmitter {
 
 function removeUnconfirmedMessage(arr, message) {
     const toRemove = arr.indexOf(message);
-    if (toRemove === -1) {
-        throw new Error(`Message is not in _unconfirmedMessages!`);
+    if (toRemove !== -1) {
+        arr.splice(toRemove, 1);
     }
-    const removed = arr.splice(toRemove, 1);
-    return removed[0];
 }
