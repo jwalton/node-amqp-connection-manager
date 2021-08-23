@@ -1,3 +1,9 @@
+## [3.2.4](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.3...v3.2.4) (2021-08-23)
+
+### Bug Fixes
+
+- connection close not awaited ([8955fe7](https://github.com/jwalton/node-amqp-connection-manager/commit/8955fe7ee8f52505b629ee091f3658dfeb425c37))
+
 ## [3.2.3](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.2...v3.2.3) (2021-08-21)
 
 ### Bug Fixes
