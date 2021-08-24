@@ -214,8 +214,12 @@ export default class AmqpConnectionManager extends EventEmitter {
                 this._currentConnection = null;
                 this._connectPromise = null;
 
-                // TODO: Probably want to try right away here, especially if there are multiple brokers to try...
-                const handle = wait(this.reconnectTimeInSeconds * 1000);
+                let handle;
+                if (err.name === 'OperationalError' && err.message === 'connect ETIMEDOUT') {
+                    handle = wait(0);
+                } else {
+                    handle = wait(this.reconnectTimeInSeconds * 1000);
+                }
                 this._cancelRetriesHandler = handle.cancel;
 
                 return handle.promise().then(() => this._connect());
