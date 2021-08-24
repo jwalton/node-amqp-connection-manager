@@ -1,3 +1,14 @@
+# [3.3.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.4...v3.3.0) (2021-08-24)
+
+### Bug Fixes
+
+- emit setup errors not caused by closed channel ([7c5fe10](https://github.com/jwalton/node-amqp-connection-manager/commit/7c5fe104c5333086a8b06bc28f451b4f22cc489d)), closes [#95](https://github.com/jwalton/node-amqp-connection-manager/issues/95)
+- setup on channel/connection closing/closed ([b21bd01](https://github.com/jwalton/node-amqp-connection-manager/commit/b21bd0173dc60712cedfd398161e52b6f621bf2a))
+
+### Features
+
+- immediately reconnect on amqplib connect timeout ([ad06108](https://github.com/jwalton/node-amqp-connection-manager/commit/ad0610878f0aba27cc5078a6d1e61420a77b7965))
+
 ## [3.2.4](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.3...v3.2.4) (2021-08-23)
 
 ### Bug Fixes
