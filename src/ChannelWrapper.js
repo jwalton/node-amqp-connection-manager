@@ -419,7 +419,7 @@ export default class ChannelWrapper extends EventEmitter {
                         // Tried to write to a closed channel.  Leave the message in the queue and we'll try again when
                         // we reconnect.
                         removeUnconfirmedMessage(this._unconfirmedMessages, message);
-                        this._messages.unshift(message);
+                        this._messages.push(message);
                     } else {
                         // Something went wrong trying to send this message - could be JSON.stringify failed, could be
                         // the broker rejected the message. Either way, reject it back
