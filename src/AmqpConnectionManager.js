@@ -23,6 +23,8 @@ function neverThrows() {
 // Events:
 // * `connect({connection, url})` - Emitted whenever we connect to a broker.
 // * `disconnect({err})` - Emitted whenever we disconnect from a broker.
+// * `blocked({reason})` - Emitted whenever connection is blocked by a broker.
+// * `unblocked()` - Emitted whenever connection is unblocked by a broker.
 //
 export default class AmqpConnectionManager extends EventEmitter {
     /**
