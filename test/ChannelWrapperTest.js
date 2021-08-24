@@ -107,7 +107,9 @@ describe('ChannelWrapper', function () {
 
         const setup2 = sinon.spy(() =>
             promiseTools.delay(20).then(function () {
-                throw new Error('Boom!');
+                const e = new Error('Channel closed');
+                e.name = 'IllegalOperationError';
+                throw e;
             })
         );
 

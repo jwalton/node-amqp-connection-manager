@@ -236,11 +236,11 @@ export default class ChannelWrapper extends EventEmitter {
                     this._setups.map((setupFn) =>
                         // TODO: Use a timeout here to guard against setupFns that never resolve?
                         pb.call(setupFn, this, channel).catch((err) => {
-                            if (this._channel) {
-                                this.emit('error', err, { name: this.name });
-                            } else {
-                                // Don't emit an error if setups failed because the channel was closing.
+                            if (err.name === 'IllegalOperationError' && err.message === 'Channel closed') {
+                                // Don't emit an error if setups failed because the channel closed.
+                                return;
                             }
+                            this.emit('error', err, { name: this.name });
                         })
                     )
                 ).then(() => {
