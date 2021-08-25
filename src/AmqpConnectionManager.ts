@@ -76,18 +76,47 @@ export interface IAmqpConnectionManager {
     heartbeatIntervalInSeconds: number;
     reconnectTimeInSeconds: number;
 
+    addListener(event: string, listener: (...args: any[]) => void): this;
+    addListener(event: 'connect', listener: ConnectListener): this;
+    addListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
+    addListener(event: 'unblocked', listener: () => void): this;
+    addListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
+
     on(event: string, listener: (...args: any[]) => void): this;
     on(event: 'connect', listener: ConnectListener): this;
     on(event: 'blocked', listener: (arg: { reason: string }) => void): this;
     on(event: 'unblocked', listener: () => void): this;
     on(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
 
+    once(event: string, listener: (...args: any[]) => void): this;
+    once(event: 'connect', listener: ConnectListener): this;
+    once(event: 'blocked', listener: (arg: { reason: string }) => void): this;
+    once(event: 'unblocked', listener: () => void): this;
+    once(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
+
+    prependListener(event: string, listener: (...args: any[]) => void): this;
+    prependListener(event: 'connect', listener: ConnectListener): this;
+    prependListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
+    prependListener(event: 'unblocked', listener: () => void): this;
+    prependListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
+
+    prependOnceListener(event: string, listener: (...args: any[]) => void): this;
+    prependOnceListener(event: 'connect', listener: ConnectListener): this;
+    prependOnceListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
+    prependOnceListener(event: 'unblocked', listener: () => void): this;
+    prependOnceListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
+
     removeListener(event: string, listener: (...args: any[]) => void): this;
 
     createChannel(options?: CreateChannelOpts): ChannelWrapper;
     close(): Promise<void>;
     isConnected(): boolean;
+
+    /** The current connection. */
     get connection(): Connection | undefined;
+
+    /** Returns the number of registered channels. */
+    get channelCount(): number;
 }
 
 //
@@ -122,69 +151,24 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     public heartbeatIntervalInSeconds: number;
     public reconnectTimeInSeconds: number;
 
-    addListener(event: string, listener: (...args: any[]) => void): this;
-    addListener(event: 'connect', listener: ConnectListener): this;
-    addListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    addListener(event: 'unblocked', listener: () => void): this;
-    addListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-    addListener(event: string, listener: (...args: any[]) => void): this {
-        return super.addListener(event, listener);
-    }
-
-    on(event: string, listener: (...args: any[]) => void): this;
-    on(event: 'connect', listener: ConnectListener): this;
-    on(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    on(event: 'unblocked', listener: () => void): this;
-    on(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-    on(event: string, listener: (...args: any[]) => void): this {
-        return super.on(event, listener);
-    }
-
-    once(event: string, listener: (...args: any[]) => void): this;
-    once(event: 'connect', listener: ConnectListener): this;
-    once(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    once(event: 'unblocked', listener: () => void): this;
-    once(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-    once(event: string, listener: (...args: any[]) => void): this {
-        return super.once(event, listener);
-    }
-
-    prependListener(event: string, listener: (...args: any[]) => void): this;
-    prependListener(event: 'connect', listener: ConnectListener): this;
-    prependListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    prependListener(event: 'unblocked', listener: () => void): this;
-    prependListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-    prependListener(event: string, listener: (...args: any[]) => void): this {
-        return super.prependListener(event, listener);
-    }
-
-    prependOnceListener(event: string, listener: (...args: any[]) => void): this;
-    prependOnceListener(event: 'connect', listener: ConnectListener): this;
-    prependOnceListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    prependOnceListener(event: 'unblocked', listener: () => void): this;
-    prependOnceListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-    prependOnceListener(event: string, listener: (...args: any[]) => void): this {
-        return super.prependOnceListener(event, listener);
-    }
-
     /**
      *  Create a new AmqplibConnectionManager.
      *
-     * @param {(string|Object)[]} urls - An array of brokers to connect to.
+     * @param urls - An array of brokers to connect to.
      *   Takes url strings or objects {url: string, connectionOptions?: object}
      *   If present, a broker's [connectionOptions] will be used instead
      *   of [options.connectionOptions] when passed to the amqplib connect method.
      *   AmqplibConnectionManager will round-robin between them whenever it
      *   needs to create a new connection.
-     * @param {Object} [options={}] -
-     * @param {number} [options.heartbeatIntervalInSeconds=5] - The interval,
+     * @param [options={}] -
+     * @param [options.heartbeatIntervalInSeconds=5] - The interval,
      *   in seconds, to send heartbeats.
-     * @param {number} [options.reconnectTimeInSeconds] - The time to wait
+     * @param [options.reconnectTimeInSeconds] - The time to wait
      *   before trying to reconnect.  If not specified, defaults to
      *   `heartbeatIntervalInSeconds`.
-     * @param {Object} [options.connectionOptions] - Passed to the amqplib
+     * @param [options.connectionOptions] - Passed to the amqplib
      *   connect method.
-     * @param {function} [options.findServers] - A `fn(callback)` or a `fn()`
+     * @param [options.findServers] - A `fn(callback)` or a `fn()`
      *   which returns a Promise.  This should resolve to one or more servers
      *   to connect to, either a single URL or an array of URLs.  This is handy
      *   when you're using a service discovery mechanism such as Consul or etcd.

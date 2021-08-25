@@ -167,9 +167,9 @@ export default class ChannelWrapper extends EventEmitter {
      * Setup functions should, ideally, not throw errors, but if they do then the ChannelWrapper will emit an 'error'
      * event.
      *
-     * @param {function} setup - setup function.
-     * @param {function} [done] - callback.
-     * @returns {void | Promise} - Resolves when complete.
+     * @param setup - setup function.
+     * @param [done] - callback.
+     * @returns - Resolves when complete.
      */
     addSetup(setup: SetupFunc, done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(
@@ -214,8 +214,8 @@ export default class ChannelWrapper extends EventEmitter {
      * Returns a Promise which resolves when this channel next connects.
      * (Mainly here for unit testing...)
      *
-     * @param {function} [done] - Optional callback.
-     * @returns {void | Promise} - Resolves when connected.
+     * @param [done] - Optional callback.
+     * @returns - Resolves when connected.
      */
     waitForConnect(done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(
@@ -295,13 +295,13 @@ export default class ChannelWrapper extends EventEmitter {
     /**
      * Create a new ChannelWrapper.
      *
-     * @param {AmqpConnectionManager} connectionManager - connection manager which
+     * @param connectionManager - connection manager which
      *   created this channel.
-     * @param {Object} [options] -
-     * @param {string} [options.name] - A name for this channel.  Handy for debugging.
-     * @param {function} [options.setup] - A default setup function to call.  See
+     * @param [options] -
+     * @param [options.name] - A name for this channel.  Handy for debugging.
+     * @param [options.setup] - A default setup function to call.  See
      *   `addSetup` for details.
-     * @param {boolean} [options.json] - if true, then ChannelWrapper assumes all
+     * @param [options.json] - if true, then ChannelWrapper assumes all
      *   messages passed to `publish()` and `sendToQueue()` are plain JSON objects.
      *   These will be encoded automatically before being sent.
      *

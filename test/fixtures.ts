@@ -184,6 +184,10 @@ export class FakeAmqpConnectionManager extends EventEmitter implements IAmqpConn
         return this._connection as any as Connection | undefined;
     }
 
+    get channelCount(): number {
+        return 0;
+    }
+
     isConnected() {
         return this.connected;
     }
