@@ -1,3 +1,9 @@
+## [3.4.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.0...v3.4.1) (2021-08-25)
+
+### Bug Fixes
+
+- Only send disconnect event on first error. ([efde3b9](https://github.com/jwalton/node-amqp-connection-manager/commit/efde3b919252f031a3edf2a06d7cfe280c06044f)), closes [#145](https://github.com/jwalton/node-amqp-connection-manager/issues/145)
+
 # [3.4.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.3.0...v3.4.0) (2021-08-25)
 
 ### Features
