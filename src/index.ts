@@ -12,7 +12,7 @@ export type { SetupFunc, CreateChannelOpts, default as ChannelWrapper } from './
 
 export function connect(
     urls: string[],
-    options: AmqpConnectionManagerOptions
+    options?: AmqpConnectionManagerOptions
 ): IAmqpConnectionManager {
     return new AmqpConnectionManager(urls, options);
 }
