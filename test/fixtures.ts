@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import { ConfirmChannel, Connection } from 'amqplib';
+import { Connection, Message, Options, Replies } from 'amqplib';
 import { EventEmitter } from 'events';
-import * as sinon from 'sinon';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
 import ChannelWrapper, { CreateChannelOpts } from '../src/ChannelWrapper';
 
@@ -43,7 +42,7 @@ export class FakeAmqp {
         this.url = undefined;
         this.failConnections = false;
         this.deadServers = [];
-        this.connect = sinon.spy((url) => {
+        this.connect = jest.fn().mockImplementation((url) => {
             if (this.failConnections) {
                 return Promise.reject(new Error('No'));
             }
@@ -65,62 +64,88 @@ export class FakeAmqp {
 }
 
 export class FakeConfirmChannel extends EventEmitter {
-    publish: ConfirmChannel['publish'];
-    sendToQueue: ConfirmChannel['sendToQueue'];
-    ack: ConfirmChannel['ack'];
-    ackAll: ConfirmChannel['ackAll'];
-    nack: ConfirmChannel['nack'];
-    nackAll: ConfirmChannel['nackAll'];
-    assertQueue: ConfirmChannel['assertQueue'];
-    bindQueue: ConfirmChannel['bindQueue'];
-    assertExchange: ConfirmChannel['assertExchange'];
-    close: ConfirmChannel['close'];
+    publish = jest
+        .fn()
+        .mockImplementation(
+            (
+                _exchange: string,
+                _routingKey: string,
+                content: Buffer,
+                _options?: Options.Publish,
+                callback?: (err: any, ok: Replies.Empty) => void
+            ): boolean => {
+                this.emit('publish', content);
+                callback?.(null, {});
+                return true;
+            }
+        );
 
-    constructor() {
-        super();
-        this.publish = sinon.spy((_exchage, _routingKey, content, _options, callback) => {
-            this.emit('publish', content);
-            callback(null);
-            return true;
-        });
+    sendToQueue = jest
+        .fn()
+        .mockImplementation(
+            (
+                _queue: string,
+                content: Buffer,
+                _options?: Options.Publish,
+                callback?: (err: any, ok: Replies.Empty) => void
+            ): boolean => {
+                this.emit('sendToQueue', content);
+                callback?.(null, {});
+                return true;
+            }
+        );
 
-        this.sendToQueue = sinon.spy((_queue, content, _options, callback) => {
-            this.emit('sendToQueue', content);
-            callback(null);
-            return true;
-        });
+    ack = jest.fn().mockImplementation(function (_message: Message, _allUpTo?: boolean): void {});
 
-        this.ack = sinon.spy(function (_message, _allUpTo) {});
+    ackAll = jest.fn().mockImplementation(function (): void {});
 
-        this.ackAll = sinon.spy(function () {});
+    nack = jest
+        .fn()
+        .mockImplementation(function (
+            _message: Message,
+            _allUpTo?: boolean,
+            _requeue?: boolean
+        ): void {});
 
-        this.nack = sinon.spy(function (_message, _allUpTo, _requeue) {});
+    nackAll = jest.fn().mockImplementation(function (_requeue?: boolean): void {});
 
-        this.nackAll = sinon.spy(function (_requeue) {});
-
-        this.assertQueue = sinon.spy(async function (queue, _options) {
+    assertQueue = jest
+        .fn()
+        .mockImplementation(async function (
+            queue: string,
+            _options?: Options.AssertQueue
+        ): Promise<Replies.AssertQueue> {
             return {
                 queue,
                 messageCount: 0,
                 consumerCount: 0,
             };
-        }) as any as ConfirmChannel['assertQueue'];
+        });
 
-        this.bindQueue = sinon.spy(async function (
-            _queue,
-            _source,
-            _pattern,
-            _args
-        ) {}) as any as ConfirmChannel['bindQueue'];
+    bindQueue = jest
+        .fn()
+        .mockImplementation(async function (
+            _queue: string,
+            _source: string,
+            _pattern: string,
+            _args?: any
+        ): Promise<Replies.Empty> {
+            return {};
+        });
 
-        this.assertExchange = sinon.spy(async function (exchange, _type, _options) {
+    assertExchange = jest
+        .fn()
+        .mockImplementation(async function (
+            exchange: string,
+            _type: 'direct' | 'topic' | 'headers' | 'fanout' | 'match' | string,
+            _options?: Options.AssertExchange
+        ): Promise<Replies.AssertExchange> {
             return { exchange };
-        }) as any as ConfirmChannel['assertExchange'];
+        });
 
-        this.close = sinon.spy(async () => {
-            this.emit('close');
-        }) as any as ConfirmChannel['close'];
-    }
+    close = jest.fn().mockImplementation(async (): Promise<void> => {
+        this.emit('close');
+    });
 }
 
 export class FakeConnection extends EventEmitter {

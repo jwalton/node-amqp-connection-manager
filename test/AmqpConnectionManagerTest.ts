@@ -2,7 +2,6 @@ import origAmpq from 'amqplib';
 import chai from 'chai';
 import chaiString from 'chai-string';
 import * as promiseTools from 'promise-tools';
-import * as sinon from 'sinon';
 import AmqpConnectionManager from '../src/AmqpConnectionManager';
 import { FakeAmqp, FakeConnection } from './fixtures';
 
@@ -15,13 +14,14 @@ describe('AmqpConnectionManager', function () {
     let amqp: AmqpConnectionManager | undefined;
 
     beforeEach(() => {
-        sinon.stub(origAmpq, 'connect').callsFake(((url: string) => amqplib.connect(url)) as any);
+        jest.spyOn(origAmpq, 'connect').mockImplementation(((url: string) =>
+            amqplib.connect(url)) as any);
         amqplib.reset();
     });
 
     afterEach(() => {
         amqp?.close();
-        sinon.restore();
+        jest.restoreAllMocks();
     });
 
     it('should establish a connection to a broker', () =>
