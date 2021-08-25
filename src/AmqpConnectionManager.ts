@@ -131,7 +131,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     private _currentUrl: number;
     private _closed = false;
     private _cancelRetriesHandler?: () => void;
-    private _connectPromise?: Promise<void>;
+    private _connectPromise?: Promise<null>;
     private _currentConnection?: Connection;
     private _findServers:
         | ((callback: (urls: ConnectionUrl | ConnectionUrl[]) => void) => void)
@@ -257,7 +257,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
 
     private _connect(): Promise<void> {
         if (this._connectPromise) {
-            return this._connectPromise;
+            return this._connectPromise as any as Promise<void>;
         }
 
         if (this._closed || this.isConnected()) {
@@ -347,6 +347,9 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     this._connectPromise = undefined;
                     this._disconnectSent = false;
                     this.emit('connect', { connection, url: originalUrl });
+
+                    // Need to return null here, or Bluebird will complain - #171.
+                    return null;
                 });
             })
             .catch((err) => {
@@ -367,9 +370,9 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 }
                 this._cancelRetriesHandler = handle.cancel;
 
-                return handle.promise.then(() => this._connect());
+                return handle.promise.then(() => this._connect()).then(() => null);
             }));
 
-        return result;
+        return result as any as Promise<void>;
     }
 }
