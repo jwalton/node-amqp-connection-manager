@@ -2,6 +2,13 @@
 
 ### Bug Fixes
 
+- **types:** 'options' should be optional in `connect()`. ([4619149](https://github.com/jwalton/node-amqp-connection-manager/commit/4619149e702418b9e4bba6e135c675754589a8ed))
+- Fix bluebird warning. ([cb2f124](https://github.com/jwalton/node-amqp-connection-manager/commit/cb2f124e10d193f6c9a3cb255636e112be2c4e53)), closes [#171](https://github.com/jwalton/node-amqp-connection-manager/issues/171)
+
+## [3.4.3](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.2...v3.4.3) (2021-08-25)
+
+### Bug Fixes
+
 - Fix bluebird warning. ([cb2f124](https://github.com/jwalton/node-amqp-connection-manager/commit/cb2f124e10d193f6c9a3cb255636e112be2c4e53)), closes [#171](https://github.com/jwalton/node-amqp-connection-manager/issues/171)
 
 ## [3.4.2](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.1...v3.4.2) (2021-08-25)
