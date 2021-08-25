@@ -255,13 +255,13 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         return this._channels.length;
     }
 
-    private _connect(): Promise<void> {
+    private _connect(): Promise<null> {
         if (this._connectPromise) {
-            return this._connectPromise as any as Promise<void>;
+            return this._connectPromise;
         }
 
         if (this._closed || this.isConnected()) {
-            return Promise.resolve();
+            return Promise.resolve(null);
         }
 
         const result = (this._connectPromise = Promise.resolve()
@@ -370,9 +370,9 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 }
                 this._cancelRetriesHandler = handle.cancel;
 
-                return handle.promise.then(() => this._connect()).then(() => null);
+                return handle.promise.then(() => this._connect());
             }));
 
-        return result as any as Promise<void>;
+        return result;
     }
 }
