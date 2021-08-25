@@ -1,3 +1,9 @@
+## [3.4.2](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.1...v3.4.2) (2021-08-25)
+
+### Bug Fixes
+
+- **types:** Minor type fixes. ([6865613](https://github.com/jwalton/node-amqp-connection-manager/commit/68656134a13786af2b751527e5d03eff07dd72b9))
+
 ## [3.4.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.0...v3.4.1) (2021-08-25)
 
 ### Bug Fixes
