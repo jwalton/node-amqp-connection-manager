@@ -1,3 +1,9 @@
+# [3.4.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.3.0...v3.4.0) (2021-08-25)
+
+### Features
+
+- Convert to typescript, add module exports. ([5f442b1](https://github.com/jwalton/node-amqp-connection-manager/commit/5f442b139dfe15468fef32022b87f409cd781a78))
+
 # [3.3.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.2.4...v3.3.0) (2021-08-24)
 
 ### Bug Fixes
