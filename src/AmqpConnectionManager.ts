@@ -109,6 +109,15 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         | (() => Promise<ConnectionUrl | ConnectionUrl[]>);
     private _urls?: ConnectionUrl[];
 
+    /**
+     * Keep track of whether a disconnect event has been sent or not.  The problem
+     * is that if we've never connected, and we encounter an error, we want to
+     * generate a "disconnect" event, even though we're not disconnected, otherwise
+     * the caller will never know there was an error.  So we can't just rely on
+     * this._currentConnection.
+     */
+    private _disconnectSent = false;
+
     public connectionOptions: AmpqConnectionOptions | undefined;
     public heartbeatIntervalInSeconds: number;
     public reconnectTimeInSeconds: number;
@@ -339,6 +348,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     // Reconnect if the connection closes
                     connection.on('close', (err) => {
                         this._currentConnection = undefined;
+                        this._disconnectSent = true;
                         this.emit('disconnect', { err });
 
                         const handle = wait(this.reconnectTimeInSeconds * 1000);
@@ -351,11 +361,15 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     });
 
                     this._connectPromise = undefined;
+                    this._disconnectSent = false;
                     this.emit('connect', { connection, url: originalUrl });
                 });
             })
             .catch((err) => {
-                this.emit('disconnect', { err });
+                if (!this._disconnectSent) {
+                    this._disconnectSent = true;
+                    this.emit('disconnect', { err });
+                }
 
                 // Connection failed...
                 this._currentConnection = undefined;
