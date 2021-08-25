@@ -1,8 +1,0 @@
-{
-    "require": ["@babel/register"],
-    "include": ["src/**/*.js"],
-    "reporter": ["html", "text-summary", "lcov"],
-    "all": true,
-    "sourceMap": false,
-    "instrument": false
-}

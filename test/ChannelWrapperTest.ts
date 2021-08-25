@@ -1,32 +1,47 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+
+import * as amqplib from 'amqplib';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import chaiString from 'chai-string';
 import * as promiseTools from 'promise-tools';
-import sinon from 'sinon';
+import * as sinon from 'sinon';
+import sinonChai from 'sinon-chai';
+import ChannelWrapper, { SetupFunc } from '../src/ChannelWrapper';
 import * as fixtures from './fixtures';
 
 chai.use(chaiString);
+chai.use(sinonChai);
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-const ChannelWrapper = require('../src/ChannelWrapper').default;
+function makeMessage(content: string): amqplib.Message {
+    return {
+        content: Buffer.from(content),
+        fields: {
+            deliveryTag: 0,
+            exchange: 'exchange',
+            redelivered: false,
+            routingKey: 'routingKey',
+        },
+        properties: {
+            headers: {},
+        } as any,
+    };
+}
 
 describe('ChannelWrapper', function () {
-    let connectionManager = null;
+    let connectionManager: fixtures.FakeAmqpConnectionManager;
 
     beforeEach(function () {
-        connectionManager = new fixtures.FakeAmqpConnectionManager();
+        connectionManager = new fixtures.FakeAmqpConnectionManager() as any;
     });
-
-    afterEach(function () {});
 
     it('should run all setup functions on connect', async function () {
         const setup1 = sinon.spy(() => promiseTools.delay(10));
         const setup2 = sinon.spy(() => promiseTools.delay(10));
 
-        const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup: setup1,
-        });
+        const channelWrapper = new ChannelWrapper(connectionManager, { setup: setup1 });
 
         await channelWrapper.addSetup(setup2);
 
@@ -157,7 +172,7 @@ describe('ChannelWrapper', function () {
     it('should emit errors if setup functions fail to run at connect time', async function () {
         const setup = () => Promise.reject(new Error('Bad setup!'));
         const setup2 = () => Promise.reject(new Error('Bad setup2!'));
-        const errorHandler = sinon.spy(function () {});
+        const errorHandler = sinon.spy(function (_err: Error) {});
 
         const channelWrapper = new ChannelWrapper(connectionManager, { setup });
         channelWrapper.on('error', errorHandler);
@@ -167,7 +182,7 @@ describe('ChannelWrapper', function () {
         await channelWrapper.waitForConnect();
 
         expect(errorHandler.calledOnce, 'error event').to.be.true;
-        expect(errorHandler.lastCall.args[0].message).to.equal('Bad setup!');
+        expect(errorHandler.lastCall.args[0]?.message).to.equal('Bad setup!');
 
         await expect(channelWrapper.addSetup(setup2)).to.be.rejectedWith('Bad setup2!');
 
@@ -176,12 +191,12 @@ describe('ChannelWrapper', function () {
     });
 
     it('should emit an error if amqplib refuses to create a channel for us', async function () {
-        const errorHandler = sinon.spy(function () {});
+        const errorHandler = sinon.spy(function (_err: Error) {});
 
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.on('error', errorHandler);
 
-        await channelWrapper._onConnect({
+        await (channelWrapper as any)._onConnect({
             connection: {
                 createConfirmChannel() {
                     return Promise.reject(new Error('No channel for you!'));
@@ -190,15 +205,15 @@ describe('ChannelWrapper', function () {
         });
 
         expect(errorHandler.calledOnce, 'error event').to.be.true;
-        expect(errorHandler.lastCall.args[0].message).to.equal('No channel for you!');
+        expect(errorHandler.lastCall.args[0]?.message).to.equal('No channel for you!');
     });
 
-    it('should work if there are no setup functions', function () {
+    it('should work if there are no setup functions', async function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
-        return channelWrapper.waitForConnect().then(function () {});
+        await channelWrapper.waitForConnect();
+        // Yay!  We didn't blow up!
     });
-    // Yay!  We didn't blow up!
 
     it('should publish messages to the underlying channel', function () {
         connectionManager.simulateConnect();
@@ -207,23 +222,25 @@ describe('ChannelWrapper', function () {
             .waitForConnect()
             .then(() =>
                 channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
-                    options: true,
+                    messageId: 'foo',
                 })
             )
             .then(function (result) {
                 expect(result, 'result').to.equal(true);
 
                 // get the underlying channel
-                const channel = channelWrapper._channel;
-                expect(channel.publish.calledOnce, 'called publish').to.be.true;
-                expect(channel.publish.lastCall.args.slice(0, 4), 'publish args').to.eql([
+                const channel = (channelWrapper as any)._channel as fixtures.FakeConfirmChannel;
+                if (!channel) {
+                    throw new Error('No channel');
+                }
+
+                expect(channel.publish).to.be.calledOnce;
+                expect(channel.publish).to.be.calledWith(
                     'exchange',
                     'routingKey',
-                    'argleblargle',
-                    {
-                        options: true,
-                    },
-                ]);
+                    Buffer.from('argleblargle'),
+                    { messageId: 'foo' }
+                );
 
                 // Try without options
                 return channelWrapper.publish('exchange', 'routingKey', 'argleblargle');
@@ -232,22 +249,24 @@ describe('ChannelWrapper', function () {
                 expect(result, 'second result').to.equal(true);
 
                 // get the underlying channel
-                const channel = channelWrapper._channel;
+                const channel = (channelWrapper as any)._channel;
                 expect(channel.publish.calledTwice, 'second call to publish').to.be.true;
                 expect(channel.publish.lastCall.args.slice(0, 4), 'second args').to.eql([
                     'exchange',
                     'routingKey',
-                    'argleblargle',
+                    Buffer.from('argleblargle'),
                     undefined,
                 ]);
-                return expect(channelWrapper.queueLength(), 'queue length').to.equal(0);
+                expect(channelWrapper.queueLength(), 'queue length').to.equal(0);
             });
     });
 
-    it('should publish messages to the underlying channel with callbacks', function (done) {
+    it('should publish messages to the underlying channel with callbacks', function (done: (
+        err?: Error
+    ) => void) {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
-        return channelWrapper.waitForConnect(function (err) {
+        channelWrapper.waitForConnect(function (err) {
             if (err) {
                 return done(err);
             }
@@ -255,9 +274,7 @@ describe('ChannelWrapper', function () {
                 'exchange',
                 'routingKey',
                 'argleblargle',
-                {
-                    options: true,
-                },
+                { messageId: 'foo' },
                 function (err, result) {
                     if (err) {
                         return done(err);
@@ -266,20 +283,17 @@ describe('ChannelWrapper', function () {
                         expect(result, 'result').to.equal(true);
 
                         // get the underlying channel
-                        const channel = channelWrapper._channel;
+                        const channel = (channelWrapper as any)._channel;
                         expect(channel.publish.calledOnce, 'called publish').to.be.true;
                         expect(channel.publish.lastCall.args.slice(0, 4), 'publish args').to.eql([
                             'exchange',
                             'routingKey',
-                            'argleblargle',
-                            {
-                                options: true,
-                            },
+                            Buffer.from('argleblargle'),
+                            { messageId: 'foo' },
                         ]);
                         return done();
                     } catch (error) {
-                        err = error;
-                        return done(err);
+                        return done(error);
                     }
                 }
             );
@@ -293,20 +307,20 @@ describe('ChannelWrapper', function () {
             .waitForConnect()
             .then(() =>
                 channelWrapper.sendToQueue('queue', 'argleblargle', {
-                    options: true,
+                    messageId: 'foo',
                 })
             )
             .then(function (result) {
                 expect(result, 'result').to.equal(true);
 
                 // get the underlying channel
-                const channel = channelWrapper._channel;
+                const channel = (channelWrapper as any)._channel;
                 expect(channel.sendToQueue.calledOnce, 'called sendToQueue').to.be.true;
                 expect(channel.sendToQueue.lastCall.args.slice(0, 3), 'args').to.eql([
                     'queue',
-                    'argleblargle',
+                    Buffer.from('argleblargle'),
                     {
-                        options: true,
+                        messageId: 'foo',
                     },
                 ]);
                 return expect(channelWrapper.queueLength(), 'queue length').to.equal(0);
@@ -316,10 +330,10 @@ describe('ChannelWrapper', function () {
     it('should queue messages for the underlying channel when disconnected', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
-            options: true,
+            messageId: 'foo',
         });
         const p2 = channelWrapper.sendToQueue('queue', 'argleblargle', {
-            options: true,
+            messageId: 'foo',
         });
 
         expect(channelWrapper.queueLength(), 'queue length').to.equal(2);
@@ -329,7 +343,7 @@ describe('ChannelWrapper', function () {
             .then(() => Promise.all([p1, p2]))
             .then(function () {
                 // get the underlying channel
-                const channel = channelWrapper._channel;
+                const channel = (channelWrapper as any)._channel;
                 expect(channel.publish.calledOnce, 'called publish').to.be.true;
                 expect(channel.sendToQueue.calledOnce, 'called sendToQueue').to.be.true;
                 return expect(
@@ -339,53 +353,49 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it('should queue messages for the underlying channel if channel closes while we are trying to send', function () {
+    it('should queue messages for the underlying channel if channel closes while we are trying to send', async function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
-        let p1 = null;
 
         connectionManager.simulateConnect();
-        return channelWrapper
-            .waitForConnect()
-            .then(function () {
-                channelWrapper._channel.publish = function (
-                    exchange,
-                    routingKey,
-                    encodedMessage,
-                    options,
-                    cb
-                ) {
-                    this.close();
-                    return cb(new Error('Channel closed'));
-                };
-                p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
-                    options: true,
-                });
+        await channelWrapper.waitForConnect();
+        (channelWrapper as any)._channel.publish = function (
+            _exchange: string,
+            _routingKey: string,
+            _encodedMessage: Buffer,
+            _options: amqplib.Options.Publish,
+            cb: (err?: Error) => void
+        ) {
+            this.close();
+            return cb(new Error('Channel closed'));
+        };
 
-                return promiseTools.delay(10);
-            })
-            .then(function () {
-                expect(channelWrapper._channel).to.not.exist;
+        const p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
+            messageId: 'foo',
+        });
 
-                connectionManager.simulateDisconnect();
-                connectionManager.simulateConnect();
-                channelWrapper.waitForConnect();
-                return p1;
-            })
-            .then(function () {
-                // get the underlying channel
-                const channel = channelWrapper._channel;
-                expect(channel.publish.calledOnce, 'called publish').to.be.true;
-                return expect(
-                    channelWrapper.queueLength(),
-                    'queue length after sending everything'
-                ).to.equal(0);
-            });
+        await promiseTools.delay(10);
+
+        expect((channelWrapper as any)._channel).to.not.exist;
+
+        connectionManager.simulateDisconnect();
+        connectionManager.simulateConnect();
+        channelWrapper.waitForConnect();
+
+        await p1;
+
+        // get the underlying channel
+        const channel = (channelWrapper as any)._channel;
+        expect(channel.publish.calledOnce, 'called publish').to.be.true;
+        return expect(
+            channelWrapper.queueLength(),
+            'queue length after sending everything'
+        ).to.equal(0);
     });
 
     it('should run all setup messages prior to sending any queued messages', function () {
-        const order = [];
+        const order: string[] = [];
 
-        const setup = function (channel) {
+        const setup: SetupFunc = function (channel: amqplib.ConfirmChannel) {
             order.push('setup');
 
             // Since this should get run before anything gets sent, this is where we need to add listeners to the
@@ -399,10 +409,10 @@ describe('ChannelWrapper', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
-            options: true,
+            messageId: 'foo',
         });
         const p2 = channelWrapper.sendToQueue('queue', 'argleblargle', {
-            options: true,
+            messageId: 'foo',
         });
 
         return channelWrapper
@@ -450,22 +460,23 @@ describe('ChannelWrapper', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
             // get the underlying channel
-            const channel = channelWrapper._channel;
+            const channel = (channelWrapper as any)._channel;
 
-            channelWrapper.ack('a', true);
+            const message = makeMessage('a');
+            channelWrapper.ack(message, true);
             expect(channel.ack.calledOnce).to.be.true;
-            expect(channel.ack.lastCall.args).to.eql(['a', true]);
+            expect(channel.ack.lastCall.args).to.eql([message, true]);
 
-            channelWrapper.ack('b');
+            channelWrapper.ack(message);
             expect(channel.ack.calledTwice).to.be.true;
-            expect(channel.ack.lastCall.args).to.eql(['b']);
+            expect(channel.ack.lastCall.args).to.eql([message, undefined]);
 
             channelWrapper.ackAll();
             expect(channel.ackAll.calledOnce).to.be.true;
 
-            channelWrapper.nack('c', false, true);
+            channelWrapper.nack(message, false, true);
             expect(channel.nack.calledOnce).to.be.true;
-            expect(channel.nack.lastCall.args).to.eql(['c', false, true]);
+            expect(channel.nack.lastCall.args).to.eql([message, false, true]);
 
             channelWrapper.nackAll(true);
             expect(channel.nackAll.calledOnce).to.be.true;
@@ -476,27 +487,30 @@ describe('ChannelWrapper', function () {
     it("should proxy acks and nacks to the underlying channel, even if we aren't done setting up", function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
+        const a = makeMessage('a');
+        const b = makeMessage('b');
+
         channelWrapper.addSetup(function () {
-            channelWrapper.ack('a');
-            channelWrapper.nack('b');
+            channelWrapper.ack(a);
+            channelWrapper.nack(b);
             return Promise.resolve();
         });
 
         connectionManager.simulateConnect();
 
         return channelWrapper.waitForConnect().then(function () {
-            const channel = channelWrapper._channel;
+            const channel = (channelWrapper as any)._channel;
             expect(channel.ack.calledOnce).to.be.true;
-            expect(channel.ack.lastCall.args).to.eql(['a']);
+            expect(channel.ack.lastCall.args).to.eql([a, undefined]);
             expect(channel.nack.calledOnce).to.be.true;
-            return expect(channel.nack.lastCall.args).to.eql(['b']);
+            return expect(channel.nack.lastCall.args).to.eql([b, undefined, undefined]);
         });
     });
 
     it('should ignore acks and nacks if we are disconnected', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
-        channelWrapper.ack('a', true);
-        return channelWrapper.nack('c', false, true);
+        channelWrapper.ack(makeMessage('a'), true);
+        return channelWrapper.nack(makeMessage('c'), false, true);
     });
 
     it('should proxy assertQueue, bindQueue, assertExchange to the underlying channel', function () {
@@ -504,19 +518,19 @@ describe('ChannelWrapper', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
             // get the underlying channel
-            const channel = channelWrapper._channel;
+            const channel = (channelWrapper as any)._channel;
 
             channelWrapper.assertQueue('dog');
             expect(channel.assertQueue.calledOnce).to.be.true;
-            expect(channel.assertQueue.lastCall.args).to.eql(['dog']);
+            expect(channel.assertQueue.lastCall.args).to.eql(['dog', undefined]);
 
-            channelWrapper.bindQueue('dog', 'bone');
+            channelWrapper.bindQueue('dog', 'bone', '.*');
             expect(channel.bindQueue.calledOnce).to.be.true;
-            expect(channel.bindQueue.lastCall.args).to.eql(['dog', 'bone']);
+            expect(channel.bindQueue.lastCall.args).to.eql(['dog', 'bone', '.*', undefined]);
 
-            channelWrapper.assertExchange('bone');
+            channelWrapper.assertExchange('bone', 'topic');
             expect(channel.assertExchange.calledOnce).to.be.true;
-            expect(channel.assertExchange.lastCall.args).to.eql(['bone']);
+            expect(channel.assertExchange.lastCall.args).to.eql(['bone', 'topic', undefined]);
         });
     });
 
@@ -526,31 +540,31 @@ describe('ChannelWrapper', function () {
 
         channelWrapper.addSetup(function () {
             channelWrapper.assertQueue('dog');
-            channelWrapper.bindQueue('dog', 'bone');
-            channelWrapper.assertExchange('bone');
+            channelWrapper.bindQueue('dog', 'bone', '.*');
+            channelWrapper.assertExchange('bone', 'topic');
             return Promise.resolve();
         });
 
         connectionManager.simulateConnect();
 
         return channelWrapper.waitForConnect().then(function () {
-            const channel = channelWrapper._channel;
+            const channel = (channelWrapper as any)._channel;
             expect(channel.assertQueue.calledOnce).to.be.true;
-            expect(channel.assertQueue.lastCall.args).to.eql(['dog']);
+            expect(channel.assertQueue.lastCall.args).to.eql(['dog', undefined]);
 
             expect(channel.bindQueue.calledOnce).to.be.true;
-            expect(channel.bindQueue.lastCall.args).to.eql(['dog', 'bone']);
+            expect(channel.bindQueue.lastCall.args).to.eql(['dog', 'bone', '.*', undefined]);
 
             expect(channel.assertExchange.calledOnce).to.be.true;
-            expect(channel.assertExchange.lastCall.args).to.eql(['bone']);
+            expect(channel.assertExchange.lastCall.args).to.eql(['bone', 'topic', undefined]);
         });
     });
 
     it('should ignore assertQueue, bindQueue, assertExchange if we are disconnected', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
-        channelWrapper.assertQueue('dog', true);
-        channelWrapper.bindQueue('dog', 'bone', true);
-        channelWrapper.assertExchange('bone', true);
+        channelWrapper.assertQueue('dog', { durable: true });
+        channelWrapper.bindQueue('dog', 'bone', '.*');
+        channelWrapper.assertExchange('bone', 'topic');
     });
 
     // Not much to test here - just make sure we don't throw any exceptions or anything weird.  :)
@@ -562,7 +576,7 @@ describe('ChannelWrapper', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.on('close', () => closeEvents++);
         return channelWrapper.waitForConnect().then(function () {
-            const channel = channelWrapper._channel;
+            const channel = (channelWrapper as any)._channel;
             return channelWrapper.close().then(function () {
                 // Should close the channel.
                 expect(channel.close.calledOnce).to.be.true;
@@ -591,7 +605,7 @@ describe('ChannelWrapper', function () {
     it('reject outstanding messages when closed', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
-            options: true,
+            messageId: 'foo',
         });
         return Promise.all([channelWrapper.close(), expect(p1).to.be.rejected]);
     });
@@ -610,7 +624,7 @@ describe('ChannelWrapper', function () {
             )
             .then(function () {
                 // get the underlying channel
-                const channel = channelWrapper._channel;
+                const channel = (channelWrapper as any)._channel;
                 expect(channel.publish.calledOnce, 'called publish').to.be.true;
                 const content = channel.publish.lastCall.args[2];
                 return expect(content.write, 'content should be a buffer').to.exist;
@@ -618,7 +632,7 @@ describe('ChannelWrapper', function () {
     });
 
     it('should reject messages when JSON encoding fails', function () {
-        const badJsonMesage = {};
+        const badJsonMesage: { x: any } = { x: 7 };
         badJsonMesage.x = badJsonMesage;
 
         connectionManager.simulateConnect();
@@ -634,12 +648,18 @@ describe('ChannelWrapper', function () {
     it('should reject messages if they get rejected by the broker', async function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup(channel) {
-                channel.publish = (a, b, c, d, cb) => {
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = (
+                    _exchange: string,
+                    _routingKey: string,
+                    _encodedMessage: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) => {
                     cb(new Error('no publish'));
                     return true;
                 };
-                channel.sendToQueue = (a, b, c, cb) => {
+                channel.sendToQueue = (_a: any, _b: any, _c: any, cb: (err?: Error) => void) => {
                     cb(new Error('no send'));
                     return true;
                 };
@@ -659,11 +679,23 @@ describe('ChannelWrapper', function () {
     it('should reject correct message if broker rejects out of order', async function () {
         connectionManager.simulateConnect();
 
-        const callbacks = [];
+        const callbacks: {
+            message: Buffer;
+            cb: (err?: Error) => void;
+        }[] = [];
 
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup(channel) {
-                channel.publish = (a, b, message, d, cb) => callbacks.push({ message, cb });
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = (
+                    _exchange: string,
+                    _routingKey: string,
+                    message: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) => {
+                    callbacks.push({ message, cb });
+                    return true;
+                };
                 return Promise.resolve();
             },
         });
@@ -679,7 +711,7 @@ describe('ChannelWrapper', function () {
         }
 
         // Nack the second message.
-        callbacks.find((c) => c.message === 'content2').cb(new Error('boom'));
+        callbacks.find((c) => c.message.toString() === 'content2')?.cb(new Error('boom'));
         await expect(p2).to.be.rejectedWith('boom');
 
         // Simulate a disconnect and reconnect.
@@ -692,55 +724,61 @@ describe('ChannelWrapper', function () {
 
         // Make sure the first message is resent.
         const resent = callbacks[callbacks.length - 1];
-        expect(resent.message).to.equal('content1');
+        expect(resent.message.toString()).to.equal('content1');
     });
 
-    it('should keep sending messages, even if we disconnect in the middle of sending', function () {
+    it('should keep sending messages, even if we disconnect in the middle of sending', async function () {
         let publishCalls = 0;
-        let p1 = null;
 
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup(channel) {
-                channel.publish = function (a, b, c, d, cb) {
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = function (
+                    _exchange: string,
+                    _routingKey: string,
+                    _message: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) {
                     publishCalls++;
                     if (publishCalls === 1) {
                         // Never reply, this channel is disconnected
                     } else {
-                        cb(null);
+                        cb();
                     }
+                    return true;
                 };
 
                 return Promise.resolve();
             },
         });
 
-        return channelWrapper
-            .waitForConnect()
-            .then(function () {
-                p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
-                return promiseTools.delay(10);
-            })
-            .then(function () {
-                connectionManager.simulateDisconnect();
-                return promiseTools.delay(10);
-            })
-            .then(function () {
-                connectionManager.simulateConnect();
-                return p1;
-            })
-            .then(() => expect(publishCalls).to.equal(2));
+        await channelWrapper.waitForConnect();
+        const p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
+        await promiseTools.delay(10);
+        connectionManager.simulateDisconnect();
+        await promiseTools.delay(10);
+        connectionManager.simulateConnect();
+        await p1;
+        expect(publishCalls).to.equal(2);
     });
 
     it('should emit an error, we disconnect during publish with code 502 (AMQP Frame Syntax Error)', function () {
         connectionManager.simulateConnect();
         const err = new Error('AMQP Frame Syntax Error');
-        err.code = 502;
+        (err as any).code = 502;
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup(channel) {
-                channel.publish = function (a, b, c, d, cb) {
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = function (
+                    _exchange: string,
+                    _routingKey: string,
+                    _message: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) {
                     connectionManager.simulateRemoteCloseEx(err);
                     cb();
+                    return true;
                 };
                 return Promise.resolve();
             },
@@ -751,19 +789,25 @@ describe('ChannelWrapper', function () {
             .then(() => channelWrapper.publish('exchange', 'routingKey', 'content'))
             .then(function () {})
             .catch((e) => {
-                expect(err).to.equal(e);
+                expect(e).to.equal(err);
             });
     });
 
-    it('should retry, we disconnect during publish with code 320 (AMQP Connection Forced Error)', function () {
+    it('should retry, we disconnect during publish with code 320 (AMQP Connection Forced Error)', async function () {
         let publishCalls = 0;
-        let p1 = null;
+
         connectionManager.simulateConnect();
         const err = new Error('AMQP Frame Syntax Error');
-        err.code = 320;
+        (err as any).code = 320;
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup(channel) {
-                channel.publish = function (a, b, c, d, cb) {
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = function (
+                    _exchange: string,
+                    _routingKey: string,
+                    _message: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) {
                     publishCalls++;
                     if (publishCalls === 1) {
                         // Never reply, this channel is disconnected
@@ -771,56 +815,47 @@ describe('ChannelWrapper', function () {
                     } else {
                         cb();
                     }
+                    return true;
                 };
                 return Promise.resolve();
             },
         });
 
-        return channelWrapper
-            .waitForConnect()
-            .then(function () {
-                p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
-                return promiseTools.delay(10);
-            })
-            .then(function () {
-                connectionManager.simulateConnect();
-                return p1;
-            })
-            .then(() => expect(publishCalls).to.equal(2));
+        await channelWrapper.waitForConnect();
+        const p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
+        await promiseTools.delay(10);
+        connectionManager.simulateConnect();
+        await p1;
+        expect(publishCalls).to.equal(2);
     });
 
-    it('should publish queued messages to the underlying channel without waiting for confirms', function () {
+    it('should publish queued messages to the underlying channel without waiting for confirms', async function () {
         connectionManager.simulateConnect();
-        let p1, p2;
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup(channel) {
+            setup(channel: amqplib.ConfirmChannel) {
                 channel.publish = sinon.stub().callsFake(() => true);
                 return Promise.resolve();
             },
         });
 
-        return channelWrapper
-            .waitForConnect()
-            .then(() => {
-                p1 = channelWrapper.publish('exchange', 'routingKey', 'msg:1');
-                p2 = channelWrapper.publish('exchange', 'routingKey', 'msg:2');
-                return promiseTools.delay(10);
-            })
-            .then(() => {
-                const channel = channelWrapper._channel;
-                expect(channel.publish.calledTwice).to.be.true;
-                expect(p1).to.not.be.fulfilled;
-                expect(p2).to.not.be.fulfilled;
-            });
+        await channelWrapper.waitForConnect();
+        const p1 = channelWrapper.publish('exchange', 'routingKey', 'msg:1');
+        const p2 = channelWrapper.publish('exchange', 'routingKey', 'msg:2');
+        await promiseTools.delay(10);
+
+        const channel = (channelWrapper as any)._channel;
+        expect(channel.publish.calledTwice).to.be.true;
+        expect(p1).to.not.be.fulfilled;
+        expect(p2).to.not.be.fulfilled;
     });
 
     it('should stop publishing messages to the queue when the queue is full', async function () {
-        const queue = [];
-        let innerChannel;
+        const queue: (() => void)[] = [];
+        let innerChannel: amqplib.Channel = {} as any;
 
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
-            async setup(channel) {
+            async setup(channel: amqplib.ConfirmChannel) {
                 innerChannel = channel;
                 channel.publish = sinon
                     .stub()
@@ -843,7 +878,7 @@ describe('ChannelWrapper', function () {
         expect(queue.length).to.equal(2);
 
         // Simulate queue draining.
-        queue.pop()();
+        queue.pop()!();
         innerChannel.emit('drain');
 
         await promiseTools.delay(10);
