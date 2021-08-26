@@ -1,6 +1,7 @@
 import origAmpq from 'amqplib';
 import chai from 'chai';
 import chaiString from 'chai-string';
+import { once } from 'events';
 import * as promiseTools from 'promise-tools';
 import AmqpConnectionManager from '../src/AmqpConnectionManager';
 import { FakeAmqp, FakeConnection } from './fixtures';
@@ -323,6 +324,22 @@ describe('AmqpConnectionManager', function () {
                     .then(resolve, reject)
             );
         }));
+
+    it('should be able to manually reconnect', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        await once(amqp, 'connect');
+
+        amqp.reconnect();
+        await once(amqp, 'disconnect');
+        await once(amqp, 'connect');
+    });
+
+    it('should throw on manual reconnect after close', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        await once(amqp, 'connect');
+        await amqp.close()
+        expect(amqp.reconnect).to.throw()
+    })
 
     it('should create and clean up channel wrappers', async function () {
         amqp = new AmqpConnectionManager('amqp://localhost');
