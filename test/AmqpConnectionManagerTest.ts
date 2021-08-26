@@ -1,6 +1,7 @@
 import origAmpq from 'amqplib';
 import chai from 'chai';
 import chaiString from 'chai-string';
+import { once } from 'events';
 import * as promiseTools from 'promise-tools';
 import AmqpConnectionManager from '../src/AmqpConnectionManager';
 import { FakeAmqp, FakeConnection } from './fixtures';
@@ -24,89 +25,60 @@ describe('AmqpConnectionManager', function () {
         jest.restoreAllMocks();
     });
 
-    it('should establish a connection to a broker', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost');
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(() => {
-                        expect(url, 'url').to.equal('amqp://localhost');
-                        expect((connection as any).url, 'connection.url').to.equal(
-                            'amqp://localhost?heartbeat=5'
-                        );
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+    it('should establish a connection to a broker', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.equal('amqp://localhost');
+        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+    });
 
-    it('should establish a connection to a broker, using an object as the URL', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager({
-                protocol: 'amqp',
-                hostname: 'localhost',
-            });
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(() => {
-                        expect(url, 'url').to.eql({
-                            protocol: 'amqp',
-                            hostname: 'localhost',
-                        });
-                        expect((connection as any).url, 'connection.url').to.eql({
-                            protocol: 'amqp',
-                            hostname: 'localhost',
-                            heartbeat: 5,
-                        });
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+    it('should establish a connection to a broker, using an object as the URL', async () => {
+        amqp = new AmqpConnectionManager({
+            protocol: 'amqp',
+            hostname: 'localhost',
+        });
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.eql({
+            protocol: 'amqp',
+            hostname: 'localhost',
+        });
+        expect((connection as any).url, 'connection.url').to.eql({
+            protocol: 'amqp',
+            hostname: 'localhost',
+            heartbeat: 5,
+        });
+    });
 
-    it('should establish a url object based connection to a broker', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager({ url: 'amqp://localhost' });
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(() => {
-                        expect(url, 'url').to.equal('amqp://localhost');
-                        expect((connection as any).url, 'connection.url').to.equal(
-                            'amqp://localhost?heartbeat=5'
-                        );
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+    it('should establish a url object based connection to a broker', async () => {
+        amqp = new AmqpConnectionManager({ url: 'amqp://localhost' });
 
-    it('should close connection to a broker', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost');
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(async () => {
-                        expect(url, 'url').to.equal('amqp://localhost');
-                        expect((connection as any).url, 'connection.url').to.equal(
-                            'amqp://localhost?heartbeat=5'
-                        );
-                        const conn = amqp?.connection;
-                        await amqp?.close();
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.equal('amqp://localhost');
+        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+    });
 
-                        expect(amqp?.connection, 'current connection').to.be.undefined;
-                        expect((conn as any)._closed, 'connection closed').to.be.true;
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+    it('should close connection to a broker', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.equal('amqp://localhost');
+        expect((connection as any).url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+        const conn = amqp.connection;
+        await amqp?.close();
 
-    /**
-     * When close() was called before _connect() finished, the connection was remaining established indefinitely
-     */
+        expect(amqp?.connection, 'current connection').to.be.undefined;
+        expect((conn as any)._closed, 'connection closed').to.be.true;
+    });
+
+    // /**
+    //  * When close() was called before _connect() finished, the connection was remaining established indefinitely
+    //  */
     it('should close pending connection to a broker', async () => {
         let closed = false;
         let connected = false;
 
         amqp = new AmqpConnectionManager('amqp://localhost');
         // Connection should not yet be established
-        expect(amqp?.connection, 'current connection').to.equal(undefined);
+        expect(amqp.connection, 'current connection').to.equal(undefined);
         // Connection should be pending though
         expect((amqp as any)._connectPromise).to.be.an.instanceof(Promise);
 
@@ -145,184 +117,117 @@ describe('AmqpConnectionManager', function () {
         await Promise.all([closePromise, connectPromise]);
     });
 
-    it('should establish a connection to a broker using findServers', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager(null, {
-                findServers() {
-                    return Promise.resolve('amqp://localhost');
-                },
-            });
+    it('should establish a connection to a broker using findServers', async () => {
+        amqp = new AmqpConnectionManager(null, {
+            findServers() {
+                return Promise.resolve('amqp://localhost');
+            },
+        });
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.equal('amqp://localhost');
+        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+    });
 
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(function () {
-                        expect(url, 'url').to.equal('amqp://localhost');
-                        expect((connection as any).url, 'connection.url').to.equal(
-                            'amqp://localhost?heartbeat=5'
-                        );
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+    it('should establish a url object based connection to a broker using findServers', async () => {
+        amqp = new AmqpConnectionManager(null, {
+            findServers() {
+                return Promise.resolve({ url: 'amqp://localhost' });
+            },
+        });
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.equal('amqp://localhost');
+        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+    });
 
-    it('should establish a url object based connection to a broker using findServers', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager(null, {
-                findServers() {
-                    return Promise.resolve({ url: 'amqp://localhost' });
-                },
-            });
+    it('should fail to connect if findServers returns no servers', async () => {
+        amqp = new AmqpConnectionManager(null, {
+            findServers() {
+                return Promise.resolve(null);
+            },
+        });
+        const [{ err }] = await once(amqp, 'disconnect');
+        expect(err.message).to.contain('No servers found');
+        return amqp?.close();
+    });
 
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(function () {
-                        expect(url, 'url').to.equal('amqp://localhost');
-                        expect((connection as any).url, 'connection.url').to.equal(
-                            'amqp://localhost?heartbeat=5'
-                        );
-                    })
-                    .then(resolve, reject)
-            );
-        }));
-
-    it('should fail to connect if findServers returns no servers', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager(null, {
-                findServers() {
-                    return Promise.resolve(null);
-                },
-            });
-            return amqp.on('disconnect', ({ err }) =>
-                Promise.resolve()
-                    .then(function () {
-                        expect(err.message).to.contain('No servers found');
-                        return amqp?.close();
-                    })
-                    .then(resolve, reject)
-            );
-        }));
-
-    it('should work with a URL with a query', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost?frameMax=0x1000');
-            return amqp.on('connect', ({ connection }) =>
-                Promise.resolve()
-                    .then(() =>
-                        expect((connection as any).url, 'connection.url').to.equal(
-                            'amqp://localhost?frameMax=0x1000&heartbeat=5'
-                        )
-                    )
-                    .then(resolve, reject)
-            );
-        }));
+    it('should work with a URL with a query', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost?frameMax=0x1000');
+        const [{ connection }] = await once(amqp, 'connect');
+        expect(connection.url, 'connection.url').to.equal(
+            'amqp://localhost?frameMax=0x1000&heartbeat=5'
+        );
+    });
 
     it('should throw an error if no url and no `findServers` option are provided', async () => {
-        await expect(() => new (AmqpConnectionManager as any)()).to.throw(
+        expect(() => new (AmqpConnectionManager as any)()).to.throw(
             'Must supply either `urls` or `findServers`'
         );
     });
 
-    it("should reconnect to the broker if it can't connect in the first place", () =>
-        new Promise(function (resolve, reject) {
-            amqplib.deadServers = ['amqp://rabbit1'];
+    it("should reconnect to the broker if it can't connect in the first place", async () => {
+        amqplib.deadServers = ['amqp://rabbit1'];
 
-            let disconnectEventsSeen = 0;
+        // Should try to connect to rabbit1 first and be refused, and then succesfully connect to rabbit2.
+        amqp = new AmqpConnectionManager(['amqp://rabbit1', 'amqp://rabbit2'], {
+            heartbeatIntervalInSeconds: 0.01,
+        });
 
-            // Should try to connect to rabbit1 first and be refused, and then succesfully connect to rabbit2.
-            amqp = new AmqpConnectionManager(['amqp://rabbit1', 'amqp://rabbit2'], {
-                heartbeatIntervalInSeconds: 0.01,
-            });
+        let disconnectEventsSeen = 0;
+        amqp.on('disconnect', function () {
+            disconnectEventsSeen++;
+            amqplib.failConnections = false;
+        });
 
-            amqp.on('disconnect', function () {
-                disconnectEventsSeen++;
-                amqplib.failConnections = false;
-            });
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(disconnectEventsSeen).to.equal(1);
 
-            return amqp.on('connect', ({ connection, url }) =>
-                Promise.resolve()
-                    .then(function () {
-                        expect(disconnectEventsSeen).to.equal(1);
+        // Verify that we round-robined to the next server, since the first was unavilable.
+        expect(url, 'url').to.equal('amqp://rabbit2');
+        if (typeof url !== 'string') {
+            throw new Error('url is not a string');
+        }
+        expect((connection as any).url, 'connection.url').to.startWith(url);
+    });
 
-                        // Verify that we round-robined to the next server, since the first was unavilable.
-                        expect(url, 'url').to.equal('amqp://rabbit2');
-                        if (typeof url !== 'string') {
-                            throw new Error('url is not a string');
-                        }
-                        expect((connection as any).url, 'connection.url').to.startWith(url);
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+    it('should reconnect to the broker if the broker disconnects', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost', {
+            heartbeatIntervalInSeconds: 0.01,
+        });
+        let disconnectsSeen = 0;
+        amqp.on('disconnect', () => disconnectsSeen++);
 
-    it('should reconnect to the broker if the broker disconnects', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost', {
-                heartbeatIntervalInSeconds: 0.01,
-            });
-            let connectsSeen = 0;
-            let disconnectsSeen = 0;
+        await once(amqp, 'connect');
+        amqplib.kill();
 
-            amqp.on('disconnect', () => disconnectsSeen++);
+        await once(amqp, 'connect');
+        expect(disconnectsSeen).to.equal(1);
+    });
 
-            amqp.once('connect', function () {
-                connectsSeen++;
-                // Murder the broker on the first connect
-                amqplib.kill();
+    it('should reconnect to the broker if the broker closed connection', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost', {
+            heartbeatIntervalInSeconds: 0.01,
+        });
 
-                amqp?.once('connect', function () {
-                    // Make sure we connect a second time
-                    connectsSeen++;
-                    Promise.resolve()
-                        .then(function () {
-                            expect(connectsSeen).to.equal(2);
-                            expect(disconnectsSeen).to.equal(1);
-                        })
-                        .then(resolve, reject);
-                });
-            });
-        }));
+        let disconnectsSeen = 0;
+        amqp.on('disconnect', () => disconnectsSeen++);
 
-    it('should reconnect to the broker if the broker closed connection', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost', {
-                heartbeatIntervalInSeconds: 0.01,
-            });
-            let connectsSeen = 0;
-            let disconnectsSeen = 0;
+        await once(amqp, 'connect');
 
-            amqp.on('disconnect', () => disconnectsSeen++);
+        // Close the connection nicely
+        amqplib.simulateRemoteClose();
 
-            amqp.once('connect', function () {
-                connectsSeen++;
-                // Close the connection nicely
-                amqplib.simulateRemoteClose();
+        await once(amqp, 'connect');
+        expect(disconnectsSeen).to.equal(1);
+    });
 
-                amqp?.once('connect', function () {
-                    // Make sure we connect a second time
-                    connectsSeen++;
-                    Promise.resolve()
-                        .then(function () {
-                            expect(connectsSeen).to.equal(2);
-                            expect(disconnectsSeen).to.equal(1);
-                        })
-                        .then(resolve, reject);
-                });
-            });
-        }));
+    it('should know if it is connected or not', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
 
-    it('should know if it is connected or not', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost');
-            expect(amqp.isConnected()).to.be.false;
+        expect(amqp.isConnected()).to.be.false;
 
-            return amqp.on('connect', () =>
-                Promise.resolve()
-                    .then(() => {
-                        expect(amqp?.isConnected()).to.be.true;
-                    })
-                    .then(resolve, reject)
-            );
-        }));
+        await once(amqp, 'connect');
+        expect(amqp?.isConnected()).to.be.true;
+    });
 
     it('should create and clean up channel wrappers', async function () {
         amqp = new AmqpConnectionManager('amqp://localhost');
@@ -358,60 +263,41 @@ describe('AmqpConnectionManager', function () {
         expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal(0);
     });
 
-    it('should not reconnect after close', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost', {
-                heartbeatIntervalInSeconds: 0.01,
-            });
-            let connectsSeen = 0;
+    it('should not reconnect after close', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost', {
+            heartbeatIntervalInSeconds: 0.01,
+        });
 
-            amqp.on('connect', () => connectsSeen++);
+        let connectsSeen = 0;
+        amqp.on('connect', () => connectsSeen++);
+        await once(amqp, 'connect');
 
-            amqp.once('connect', () =>
-                Promise.resolve()
-                    .then(() =>
-                        // Close the manager
-                        amqp?.close()
-                    )
-                    .then(function () {
-                        // Murder the broker on the first connect
-                        amqplib.kill();
+        // Close the manager
+        await amqp?.close();
 
-                        // Wait a moment
-                        return promiseTools.delay(50);
-                    })
-                    .then(() =>
-                        // Make sure didn't see a second connect
-                        expect(connectsSeen).to.equal(1)
-                    )
-                    .then(resolve, reject)
-            );
-        }));
+        // Murder the broker on the first connect
+        amqplib.kill();
 
-    it('should detect connection block/unblock', () =>
-        new Promise(function (resolve, reject) {
-            amqp = new AmqpConnectionManager('amqp://localhost');
-            let connectsSeen = 0;
-            let blockSeen = 0;
-            let unblockSeen = 0;
+        await promiseTools.delay(50);
+        expect(connectsSeen).to.equal(1);
+    });
 
-            amqp.on('blocked', () => blockSeen++);
+    it('should detect connection block/unblock', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
 
-            amqp.on('unblocked', () => unblockSeen++);
+        let blockSeen = 0;
+        let unblockSeen = 0;
 
-            amqp.once('connect', function () {
-                connectsSeen++;
-                // Close the connection nicely
-                amqplib.simulateRemoteBlock();
-                amqplib.simulateRemoteUnblock();
+        amqp.on('blocked', () => blockSeen++);
 
-                Promise.resolve()
-                    .then(function () {
-                        expect(connectsSeen).to.equal(1);
-                        expect(blockSeen).to.equal(1);
-                        expect(unblockSeen).to.equal(1);
-                    })
-                    .then(resolve, reject);
-            });
-        }));
+        amqp.on('unblocked', () => unblockSeen++);
+
+        await once(amqp, 'connect');
+        // Close the connection nicely
+        amqplib.simulateRemoteBlock();
+        amqplib.simulateRemoteUnblock();
+
+        expect(blockSeen).to.equal(1);
+        expect(unblockSeen).to.equal(1);
+    });
 });
