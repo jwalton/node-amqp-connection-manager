@@ -1,17 +1,18 @@
 import AmqpConnectionManager, {
     AmqpConnectionManagerOptions,
+    ConnectionUrl,
     IAmqpConnectionManager,
 } from './AmqpConnectionManager.js';
 
 export type {
     AmqpConnectionManagerOptions,
+    ConnectionUrl,
     IAmqpConnectionManager as AmqpConnectionManager,
 } from './AmqpConnectionManager.js';
-
-export type { SetupFunc, CreateChannelOpts, default as ChannelWrapper } from './ChannelWrapper.js';
+export type { CreateChannelOpts, default as ChannelWrapper, SetupFunc } from './ChannelWrapper.js';
 
 export function connect(
-    urls: string[],
+    urls: ConnectionUrl | ConnectionUrl[] | undefined | null,
     options?: AmqpConnectionManagerOptions
 ): IAmqpConnectionManager {
     return new AmqpConnectionManager(urls, options);

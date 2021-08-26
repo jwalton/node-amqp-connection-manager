@@ -10,7 +10,7 @@ import { wait } from './helpers.js';
 // Default heartbeat time.
 const HEARTBEAT_IN_SECONDS = 5;
 
-type ConnectionUrl =
+export type ConnectionUrl =
     | string
     | amqp.Options.Connect
     | { url: string; connectionOptions?: AmpqConnectionOptions };
