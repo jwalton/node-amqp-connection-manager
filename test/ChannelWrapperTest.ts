@@ -703,11 +703,8 @@ describe('ChannelWrapper', function () {
 
         channelWrapper.publish('exchange', 'routingKey', 'content1');
         const p2 = channelWrapper.publish('exchange', 'routingKey', 'content2');
-
-        // Wait for both messages to be sent.
-        while (callbacks.length < 2) {
-            await promiseTools.delay(10);
-        }
+        await promiseTools.delay(10);
+        expect(callbacks).to.have.length(2);
 
         // Nack the second message.
         callbacks.find((c) => c.message.toString() === 'content2')?.cb(new Error('boom'));
@@ -716,10 +713,10 @@ describe('ChannelWrapper', function () {
         // Simulate a disconnect and reconnect.
         connectionManager.simulateDisconnect();
         await promiseTools.delay(10);
+        callbacks.find((c) => c.message.toString() === 'content1')?.cb(new Error('disconnected'));
         connectionManager.simulateConnect();
-        while (callbacks.length < 3) {
-            await promiseTools.delay(10);
-        }
+        await promiseTools.delay(10);
+        expect(callbacks).to.have.length(3);
 
         // Make sure the first message is resent.
         const resent = callbacks[callbacks.length - 1];
@@ -727,7 +724,7 @@ describe('ChannelWrapper', function () {
     });
 
     it('should keep sending messages, even if we disconnect in the middle of sending', async function () {
-        let publishCalls = 0;
+        const callbacks: ((err: Error | undefined) => void)[] = [];
 
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
@@ -739,12 +736,7 @@ describe('ChannelWrapper', function () {
                     _options: amqplib.Options.Publish,
                     cb: (err?: Error) => void
                 ) {
-                    publishCalls++;
-                    if (publishCalls === 1) {
-                        // Never reply, this channel is disconnected
-                    } else {
-                        cb();
-                    }
+                    callbacks.push(cb);
                     return true;
                 };
 
@@ -754,12 +746,100 @@ describe('ChannelWrapper', function () {
 
         await channelWrapper.waitForConnect();
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
+
+        // Disconnect, and generate an error for the in-flight message.
         await promiseTools.delay(10);
         connectionManager.simulateDisconnect();
+        expect(callbacks).to.have.length(1);
+        callbacks[0](new Error('disconnected'));
+
+        // Reconnect.  Should resend the message.
         await promiseTools.delay(10);
         connectionManager.simulateConnect();
+        await promiseTools.delay(10);
+        expect(callbacks).to.have.length(2);
+        callbacks[1](undefined);
         await p1;
-        expect(publishCalls).to.equal(2);
+    });
+
+    it('should handle getting a confirm out-of-order with a disconnect', async function () {
+        const callbacks: ((err: Error | undefined) => void)[] = [];
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = function (
+                    _exchange: string,
+                    _routingKey: string,
+                    _message: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) {
+                    callbacks.push(cb);
+                    return true;
+                };
+
+                return Promise.resolve();
+            },
+        });
+
+        await channelWrapper.waitForConnect();
+        const p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
+
+        // Disconnect.
+        await promiseTools.delay(10);
+        connectionManager.simulateDisconnect();
+        expect(callbacks).to.have.length(1);
+
+        // Message succeeds after disconnect.
+        callbacks[0](undefined);
+
+        // Reconnect.  Should resend the message.
+        await promiseTools.delay(10);
+        connectionManager.simulateConnect();
+        await promiseTools.delay(10);
+        expect(callbacks).to.have.length(1);
+        await p1;
+    });
+
+    it('should handle getting a confirm out-of-order with a disconnect and reconnect', async function () {
+        const callbacks: ((err: Error | undefined) => void)[] = [];
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup(channel: amqplib.ConfirmChannel) {
+                channel.publish = function (
+                    _exchange: string,
+                    _routingKey: string,
+                    _message: Buffer,
+                    _options: amqplib.Options.Publish,
+                    cb: (err?: Error) => void
+                ) {
+                    callbacks.push(cb);
+                    return true;
+                };
+
+                return Promise.resolve();
+            },
+        });
+
+        await channelWrapper.waitForConnect();
+        const p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
+
+        // Disconnect.
+        await promiseTools.delay(10);
+        connectionManager.simulateDisconnect();
+        expect(callbacks).to.have.length(1);
+
+        // Reconnect.
+        await promiseTools.delay(10);
+        connectionManager.simulateConnect();
+        await promiseTools.delay(10);
+
+        // Message from first connection succeeds after disconnect/reconnect.
+        expect(callbacks).to.have.length(1);
+        callbacks[0](undefined);
+        await p1;
     });
 
     it('should emit an error, we disconnect during publish with code 502 (AMQP Frame Syntax Error)', function () {
@@ -793,7 +873,7 @@ describe('ChannelWrapper', function () {
     });
 
     it('should retry, we disconnect during publish with code 320 (AMQP Connection Forced Error)', async function () {
-        let publishCalls = 0;
+        const callbacks: ((err: Error | undefined) => void)[] = [];
 
         connectionManager.simulateConnect();
         const err = new Error('AMQP Frame Syntax Error');
@@ -807,13 +887,7 @@ describe('ChannelWrapper', function () {
                     _options: amqplib.Options.Publish,
                     cb: (err?: Error) => void
                 ) {
-                    publishCalls++;
-                    if (publishCalls === 1) {
-                        // Never reply, this channel is disconnected
-                        connectionManager.simulateRemoteCloseEx(err);
-                    } else {
-                        cb();
-                    }
+                    callbacks.push(cb);
                     return true;
                 };
                 return Promise.resolve();
@@ -823,9 +897,20 @@ describe('ChannelWrapper', function () {
         await channelWrapper.waitForConnect();
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'content');
         await promiseTools.delay(10);
+        expect(callbacks).to.have.length(1);
+
+        // Simulate disconnect during publish.
+        connectionManager.simulateRemoteCloseEx(err);
+        callbacks[0](new Error('disconnected'));
+
+        // Reconnect.
         connectionManager.simulateConnect();
+        await promiseTools.delay(10);
+
+        // Message should be republished.
+        expect(callbacks).to.have.length(2);
+        callbacks[1](undefined);
         await p1;
-        expect(publishCalls).to.equal(2);
     });
 
     it('should publish queued messages to the underlying channel without waiting for confirms', async function () {
