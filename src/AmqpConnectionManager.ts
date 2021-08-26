@@ -245,6 +245,31 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         return !!this._currentConnection;
     }
 
+    /** Force reconnect - noop unless connected */
+    reconnect(): void {
+        if (this._closed) {
+            throw new Error('cannot reconnect after close');
+        }
+
+        // If we have a connection, close it and immediately connect again.
+        // Wait for ordinary reconnect otherwise.
+        if (this._currentConnection) {
+            this._currentConnection.removeAllListeners();
+            this._currentConnection
+                .close()
+                .catch(() => {
+                    // noop
+                })
+                .then(() => {
+                    this._currentConnection = undefined;
+                    this._disconnectSent = true;
+                    this.emit('disconnect', { err: new Error('forced reconnect') });
+                    return this._connect();
+                })
+                .catch(neverThrows);
+        }
+    }
+
     /** The current connection. */
     get connection(): Connection | undefined {
         return this._currentConnection;

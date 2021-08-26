@@ -229,6 +229,22 @@ describe('AmqpConnectionManager', function () {
         expect(amqp?.isConnected()).to.be.true;
     });
 
+    it('should be able to manually reconnect', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        await once(amqp, 'connect');
+
+        amqp.reconnect();
+        await once(amqp, 'disconnect');
+        await once(amqp, 'connect');
+    });
+
+    it('should throw on manual reconnect after close', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        await once(amqp, 'connect');
+        await amqp.close()
+        expect(amqp.reconnect).to.throw()
+    })
+
     it('should create and clean up channel wrappers', async function () {
         amqp = new AmqpConnectionManager('amqp://localhost');
         const channel = amqp.createChannel({ name: 'test-chan' });
