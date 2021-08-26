@@ -1,3 +1,13 @@
+## [3.5.2](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.5.1...v3.5.2) (2021-08-26)
+
+### Bug Fixes
+
+- Fix handling of resending messages during a disconnect. ([e1457a5](https://github.com/jwalton/node-amqp-connection-manager/commit/e1457a598c6ecffca9c864036f1875f546ad5017)), closes [#152](https://github.com/jwalton/node-amqp-connection-manager/issues/152)
+
+### Performance Improvements
+
+- Send messages to underlying channel in synchronous batches. ([b866ef2](https://github.com/jwalton/node-amqp-connection-manager/commit/b866ef25ebe97c1cf4fe421835291584cb738f41))
+
 ## [3.5.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.5.0...v3.5.1) (2021-08-26)
 
 ### Bug Fixes
