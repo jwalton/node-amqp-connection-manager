@@ -294,7 +294,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
 
                 if (typeof url === 'object' && 'url' in url) {
                     originalUrl = connect = url.url;
-                    connectionOptions = url.connectionOptions || connectionOptions;
+                    connectionOptions = url.connectionOptions || this.connectionOptions;
                 } else if (typeof url === 'string') {
                     originalUrl = connect = url;
                 } else {
