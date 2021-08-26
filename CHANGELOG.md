@@ -1,3 +1,9 @@
+## [3.5.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.5.0...v3.5.1) (2021-08-26)
+
+### Bug Fixes
+
+- **types:** Make private things private. ([8b1338b](https://github.com/jwalton/node-amqp-connection-manager/commit/8b1338ba2f46267b4aedcbeeaccfdc6cb24680ec))
+
 # [3.5.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.5...v3.5.0) (2021-08-26)
 
 ### Features
