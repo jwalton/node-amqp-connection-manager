@@ -499,7 +499,7 @@ export default class ChannelWrapper extends EventEmitter {
                                             if (err) {
                                                 reject(err);
                                             } else {
-                                                setImmediate(() => resolve(result));
+                                                resolve(result);
                                             }
                                         }
                                     );
@@ -514,7 +514,7 @@ export default class ChannelWrapper extends EventEmitter {
                                             if (err) {
                                                 reject(err);
                                             } else {
-                                                setImmediate(() => resolve(result));
+                                                resolve(result);
                                             }
                                         }
                                     );
