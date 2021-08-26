@@ -169,6 +169,7 @@ describe('Integration tests', () => {
 
         await timeout(pEvent(connection, 'connect'), 3000);
         await timeout(rpcClient.waitForConnect(), 3000);
+        await timeout(rpcServer.waitForConnect(), 3000);
 
         // Send message from client to server.
         await rpcClient.sendToQueue(queueName, 'hello', {
@@ -193,6 +194,12 @@ describe('Integration tests', () => {
         connection = amqp.connect(['amqp://localhost']);
 
         const result = defer<string | undefined>();
+
+        connection.on('disconnect', ({ err }) => {
+            if (err) {
+                console.log(err);
+            }
+        });
 
         // Ask the connection manager for a ChannelWrapper.  Specify a setup function to
         // run every time we reconnect to the broker.
@@ -227,6 +234,7 @@ describe('Integration tests', () => {
         });
 
         await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(rpcServer.waitForConnect(), 3000);
         await timeout(rpcClient.waitForConnect(), 3000);
 
         // Send message from client to server.
