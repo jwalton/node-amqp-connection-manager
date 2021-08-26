@@ -1,3 +1,9 @@
+## [3.4.5](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.4...v3.4.5) (2021-08-26)
+
+### Performance Improvements
+
+- resolve sent messages immediately ([2349da2](https://github.com/jwalton/node-amqp-connection-manager/commit/2349da2db8d34934c6d0225983b6411509730560))
+
 ## [3.4.4](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.3...v3.4.4) (2021-08-26)
 
 ### Bug Fixes
