@@ -29,6 +29,50 @@ describe('Integration tests', () => {
         await connection.close();
     });
 
+    it('should connect to the broker with a username and password', async () => {
+        // Create a new connection manager
+        const connection = amqp.connect(['amqp://guest:guest@localhost:5672']);
+        await timeout(pEvent(connection, 'connect'), 3000);
+        await connection.close();
+    });
+
+    it('should connect to the broker with a string', async () => {
+        // Create a new connection manager
+        const connection = amqp.connect('amqp://guest:guest@localhost:5672');
+        await timeout(pEvent(connection, 'connect'), 3000);
+        await connection.close();
+    });
+
+    it('should connect to the broker with a amqp.Connect object', async () => {
+        // Create a new connection manager
+        const connection = amqp.connect({
+            protocol: 'amqp',
+            hostname: 'localhost',
+            port: 5672,
+            vhost: '/',
+        });
+        await timeout(pEvent(connection, 'connect'), 3000);
+        await connection.close();
+    });
+
+    it('should connect to the broker with an url/options object', async () => {
+        // Create a new connection manager
+        const connection = amqp.connect({
+            url: 'amqp://guest:guest@localhost:5672',
+        });
+        await timeout(pEvent(connection, 'connect'), 3000);
+        await connection.close();
+    });
+
+    it('should connect to the broker with a string with options', async () => {
+        // Create a new connection manager
+        const connection = amqp.connect(
+            'amqp://guest:guest@localhost:5672/%2F?heartbeat=10&channelMax=100'
+        );
+        await timeout(pEvent(connection, 'connect'), 3000);
+        await connection.close();
+    });
+
     it('send and receive messages', async () => {
         const queueName = 'testQueue1';
         const content = `hello world - ${Date.now()}`;
