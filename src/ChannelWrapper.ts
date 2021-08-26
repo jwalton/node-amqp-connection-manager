@@ -388,7 +388,7 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     // Called whenever we disconnect from the AMQP server.
-    _onDisconnect(ex: { err: Error & { code: number } }): void {
+    private _onDisconnect(ex: { err: Error & { code: number } }): void {
         this._irrecoverableCode = ex.err instanceof Error ? ex.err.code : undefined;
         this._channel = undefined;
         this._settingUp = undefined;
@@ -432,12 +432,12 @@ export default class ChannelWrapper extends EventEmitter {
         });
     }
 
-    _shouldPublish(): boolean {
+    private _shouldPublish(): boolean {
         return this._messages.length > 0 && !this._settingUp && !!this._channel;
     }
 
     // Start publishing queued messages, if there isn't already a worker doing this.
-    _startWorker(): void {
+    private _startWorker(): void {
         if (!this._working && this._shouldPublish()) {
             this._working = true;
             this._workerNumber++;
@@ -446,11 +446,11 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     // Define if a message can cause irrecoverable error
-    _canWaitReconnection(): boolean {
+    private _canWaitReconnection(): boolean {
         return !this._irrecoverableCode || !IRRECOVERABLE_ERRORS.includes(this._irrecoverableCode);
     }
 
-    _publishQueuedMessages(workerNumber: number): void {
+    private _publishQueuedMessages(workerNumber: number): void {
         const channel = this._channel;
         if (
             !channel ||
