@@ -1,3 +1,9 @@
+## [3.4.4](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.3...v3.4.4) (2021-08-26)
+
+### Bug Fixes
+
+- **types:** Allow passing object to `connect()` in addition to strings. ([516fd9f](https://github.com/jwalton/node-amqp-connection-manager/commit/516fd9fa19a12ce6aa585f97503dfb4fa336352f))
+
 ## [3.4.3](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.2...v3.4.3) (2021-08-25)
 
 ### Bug Fixes
