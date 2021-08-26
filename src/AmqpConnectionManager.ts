@@ -288,13 +288,16 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 const url = this._urls[this._currentUrl];
                 this._currentUrl++;
 
-                let connectionOptions: ConnectionOptions | undefined;
+                // Set connectionOptions to the setting in the class instance (which came via the constructor)
+                let connectionOptions: ConnectionOptions | undefined = this.connectionOptions;
                 let originalUrl: string | amqp.Options.Connect;
                 let connect: string | amqp.Options.Connect;
 
                 if (typeof url === 'object' && 'url' in url) {
                     originalUrl = connect = url.url;
-                    connectionOptions = url.connectionOptions || connectionOptions;
+                    // If URL is an object, pull out any specific URL connectionOptions for it or use the
+                    // instance connectionOptions if none were provided for this specific URL.
+                    connectionOptions = url.connectionOptions || this.connectionOptions;
                 } else if (typeof url === 'string') {
                     originalUrl = connect = url;
                 } else {
