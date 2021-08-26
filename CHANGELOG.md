@@ -1,3 +1,9 @@
+# [3.5.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.5...v3.5.0) (2021-08-26)
+
+### Features
+
+- manual reconnect ([798b45f](https://github.com/jwalton/node-amqp-connection-manager/commit/798b45f52c437f35a0f89b431b872354a7a3eb0e))
+
 ## [3.4.5](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.4.4...v3.4.5) (2021-08-26)
 
 ### Performance Improvements
