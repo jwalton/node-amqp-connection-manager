@@ -44,12 +44,15 @@ interface SendToQueueMessage {
     reject: (err: Error) => void;
 }
 
+interface ConsumerOptions extends amqplib.Options.Consume {
+    prefetch?: number
+}
+
 interface Consumer {
     consumerTag: string | null;
     queue: string;
     onMessage: (msg: amqplib.ConsumeMessage) => void;
-    consumeOptions?: amqplib.Options.Consume;
-    options?: { prefetch?: number };
+    options: ConsumerOptions;
 }
 
 type Message = PublishMessage | SendToQueueMessage;
@@ -603,14 +606,12 @@ export default class ChannelWrapper extends EventEmitter {
     async consume(
         queue: string,
         onMessage: Consumer['onMessage'],
-        consumeOptions?: Consumer['consumeOptions'],
-        options?: Consumer['options']
+        options: ConsumerOptions = {}
     ): Promise<void> {
         const consumer: Consumer = {
             consumerTag: null,
             queue,
             onMessage,
-            consumeOptions,
             options,
         };
         this._consumers.push(consumer);
@@ -622,9 +623,9 @@ export default class ChannelWrapper extends EventEmitter {
             return;
         }
 
-        const options = consumer.options;
-        if (options?.prefetch) {
-            this._channel.prefetch(options.prefetch, false);
+        const { prefetch, ...options } = consumer.options;
+        if (typeof prefetch === 'number') {
+            this._channel.prefetch(prefetch, false);
         }
 
         const { consumerTag } = await this._channel.consume(
@@ -647,7 +648,7 @@ export default class ChannelWrapper extends EventEmitter {
                 }
                 consumer.onMessage(msg);
             },
-            consumer.consumeOptions
+            options
         );
         consumer.consumerTag = consumerTag;
     }

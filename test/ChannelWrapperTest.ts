@@ -1061,8 +1061,7 @@ describe('ChannelWrapper', function () {
             (msg) => {
                 queue1.push(msg);
             },
-            { noAck: true },
-            { prefetch: 10 }
+            { noAck: true, prefetch: 10 },
         );
 
         const queue2: any[] = [];
