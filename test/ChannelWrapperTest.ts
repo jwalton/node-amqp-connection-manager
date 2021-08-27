@@ -266,9 +266,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it('should publish messages to the underlying channel with callbacks', function (done: (
-        err?: Error
-    ) => void) {
+    it('should publish messages to the underlying channel with callbacks', function (done) {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.waitForConnect(function (err) {
@@ -969,6 +967,180 @@ describe('ChannelWrapper', function () {
 
         // Final message should have been published to the underlying queue.
         expect(queue.length).to.equal(2);
+    });
+
+    it('should consume messages', async function () {
+        let onMessage: any = null;
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel: amqplib.ConfirmChannel) {
+                channel.consume = jest.fn().mockImplementation((_queue, onMsg, _options) => {
+                    onMessage = onMsg;
+                    return Promise.resolve({ consumerTag: 'abc' });
+                });
+            },
+        });
+        await channelWrapper.waitForConnect();
+
+        const messages: any[] = [];
+        await channelWrapper.consume(
+            'queue',
+            (msg) => {
+                messages.push(msg);
+            },
+            { noAck: true }
+        );
+
+        onMessage(1);
+        onMessage(2);
+        onMessage(3);
+        expect(messages).to.deep.equal([1, 2, 3]);
+    });
+
+    it('should reconnect consumer on consumer cancellation', async function () {
+        let onMessage: any = null;
+        let consumerTag = 0;
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel: amqplib.ConfirmChannel) {
+                channel.consume = jest.fn().mockImplementation((_queue, onMsg, _options) => {
+                    onMessage = onMsg;
+                    return Promise.resolve({ consumerTag: `${consumerTag++}` });
+                });
+            },
+        });
+        await channelWrapper.waitForConnect();
+
+        const messages: any[] = [];
+        await channelWrapper.consume('queue', (msg) => {
+            messages.push(msg);
+        });
+
+        onMessage(1);
+        onMessage(null); // simulate consumer cancel
+        onMessage(2);
+        onMessage(null); // simulate second cancel
+        onMessage(3);
+
+        expect(messages).to.deep.equal([1, 2, 3]);
+        expect(consumerTag).to.equal(3);
+    });
+
+    it('should reconnect consumers on channel error', async function () {
+        let onQueue1: any = null;
+        let onQueue2: any = null;
+        let consumerTag = 0;
+
+        // Define a prefetch function here, because it will otherwise be
+        // unique for each new channel
+        const prefetchFn = jest
+            .fn()
+            .mockImplementation((_prefetch: number, _isGlobal: boolean) => {});
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel: amqplib.ConfirmChannel) {
+                channel.prefetch = prefetchFn;
+                channel.consume = jest.fn().mockImplementation((queue, onMsg, _options) => {
+                    if (queue === 'queue1') {
+                        onQueue1 = onMsg;
+                    } else {
+                        onQueue2 = onMsg;
+                    }
+                    return Promise.resolve({ consumerTag: `${consumerTag++}` });
+                });
+            },
+        });
+        await channelWrapper.waitForConnect();
+
+        const queue1: any[] = [];
+        await channelWrapper.consume(
+            'queue1',
+            (msg) => {
+                queue1.push(msg);
+            },
+            { noAck: true, prefetch: 10 },
+        );
+
+        const queue2: any[] = [];
+        await channelWrapper.consume('queue2', (msg) => {
+            queue2.push(msg);
+        });
+
+        onQueue1(1);
+        onQueue2(1);
+
+        connectionManager.simulateDisconnect();
+        connectionManager.simulateConnect();
+        await channelWrapper.waitForConnect();
+
+        onQueue1(2);
+        onQueue2(2);
+
+        expect(queue1).to.deep.equal([1, 2]);
+        expect(queue2).to.deep.equal([1, 2]);
+        expect(consumerTag).to.equal(4);
+        expect(prefetchFn).to.have.beenCalledTimes(2);
+        expect(prefetchFn).to.have.beenNthCalledWith(1, 10, false);
+        expect(prefetchFn).to.have.beenNthCalledWith(2, 10, false);
+    });
+
+    it('should be able to cancel all consumers', async function () {
+        let onQueue1: any = null;
+        let onQueue2: any = null;
+        let consumerTag = 0;
+        const canceledTags: number[] = [];
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel: amqplib.ConfirmChannel) {
+                channel.consume = jest.fn().mockImplementation((queue, onMsg, _options) => {
+                    if (queue === 'queue1') {
+                        onQueue1 = onMsg;
+                    } else {
+                        onQueue2 = onMsg;
+                    }
+                    return Promise.resolve({ consumerTag: `${consumerTag++}` });
+                });
+                channel.cancel = jest.fn().mockImplementation((consumerTag) => {
+                    canceledTags.push(consumerTag);
+                    if (consumerTag === '0') {
+                        onQueue1(null);
+                    } else if (consumerTag === '1') {
+                        onQueue2(null);
+                    }
+                    return Promise.resolve();
+                });
+            },
+        });
+        await channelWrapper.waitForConnect();
+
+        const queue1: any[] = [];
+        await channelWrapper.consume('queue1', (msg) => {
+            queue1.push(msg);
+        });
+
+        const queue2: any[] = [];
+        await channelWrapper.consume('queue2', (msg) => {
+            queue2.push(msg);
+        });
+
+        onQueue1(1);
+        onQueue2(1);
+
+        await channelWrapper.cancelAll();
+
+        // Consumers shouldn't be resumed after reconnect when canceled
+        connectionManager.simulateDisconnect();
+        connectionManager.simulateConnect();
+        await channelWrapper.waitForConnect();
+
+        expect(queue1).to.deep.equal([1]);
+        expect(queue2).to.deep.equal([1]);
+        expect(consumerTag).to.equal(2);
+        expect(canceledTags).to.deep.equal(['0', '1']);
     });
 });
 
