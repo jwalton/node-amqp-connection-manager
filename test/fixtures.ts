@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import { Connection, Message, Options, Replies } from 'amqplib';
-import { EventEmitter } from 'events';
+import { EventEmitter, once } from 'events';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
 import ChannelWrapper, { CreateChannelOpts } from '../src/ChannelWrapper';
 
@@ -192,6 +192,15 @@ export class FakeAmqpConnectionManager extends EventEmitter implements IAmqpConn
 
     get channelCount(): number {
         return 0;
+    }
+
+    async connect(): Promise<void> {
+        await Promise.all([once(this, 'connect'), this.simulateConnect()]);
+    }
+
+    reconnect(): void {
+        this.simulateDisconnect();
+        this.simulateConnect();
     }
 
     isConnected() {
