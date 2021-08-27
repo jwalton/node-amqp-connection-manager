@@ -146,6 +146,12 @@ export class FakeConfirmChannel extends EventEmitter {
     close = jest.fn().mockImplementation(async (): Promise<void> => {
         this.emit('close');
     });
+
+    consume = jest.fn().mockImplementation(async (): Promise<Replies.Consume> => {
+        return { consumerTag: 'abc' };
+    });
+
+    prefetch = jest.fn().mockImplementation((_prefetch: number, _isGlobal: boolean): void => {});
 }
 
 export class FakeConnection extends EventEmitter {
