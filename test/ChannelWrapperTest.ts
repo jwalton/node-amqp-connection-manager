@@ -266,9 +266,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it('should publish messages to the underlying channel with callbacks', function (done: (
-        err?: Error
-    ) => void) {
+    it('should publish messages to the underlying channel with callbacks', function (done) {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.waitForConnect(function (err) {
