@@ -218,7 +218,7 @@ export default class ChannelWrapper extends EventEmitter {
      */
     removeSetup(
         setup: SetupFunc,
-        teardown?: pb.Callback<void>,
+        teardown?: SetupFunc,
         done?: pb.Callback<void>
     ): Promise<void> {
         return pb.addCallback(done, () => {
