@@ -392,6 +392,30 @@ describe('ChannelWrapper', function () {
         ).to.equal(0);
     });
 
+    it('should timeout published messages', async function () {
+        const channelWrapper = new ChannelWrapper(connectionManager);
+
+        const startTime = Date.now();
+        const errors = await Promise.all([
+            channelWrapper
+                .publish('exchange', 'routingKey', 'argleblargle', {
+                    messageId: 'foo',
+                    timeout: 100,
+                })
+                .catch((err) => err),
+            channelWrapper
+                .sendToQueue('queue', 'argleblargle', {
+                    messageId: 'foo',
+                    timeout: 100,
+                })
+                .catch((err) => err),
+        ]);
+        const duration = Date.now() - startTime;
+
+        expect(errors.map((e) => e.message)).to.deep.equal(['timeout', 'timeout']);
+        expect(duration).to.be.approximately(100, 10);
+    });
+
     it('should run all setup messages prior to sending any queued messages', function () {
         const order: string[] = [];
 
@@ -1061,7 +1085,7 @@ describe('ChannelWrapper', function () {
             (msg) => {
                 queue1.push(msg);
             },
-            { noAck: true, prefetch: 10 },
+            { noAck: true, prefetch: 10 }
         );
 
         const queue2: any[] = [];
