@@ -23,6 +23,10 @@ export interface CreateChannelOpts {
      * These will be encoded automatically before being sent.
      */
     json?: boolean;
+    /**
+     * Default publish timeout in ms. Messages not published within the given time are rejected with a timeout error.
+     */
+    publishTimeout?: number;
 }
 
 interface PublishMessage {
@@ -134,6 +138,11 @@ export default class ChannelWrapper extends EventEmitter {
      * True if the underlying channel has room for more messages.
      */
     private _channelHasRoom = true;
+
+    /**
+     * Default publish timeout
+     */
+    private _publishTimeout?: number;
 
     public name?: string;
 
@@ -276,6 +285,7 @@ export default class ChannelWrapper extends EventEmitter {
         return pb.addCallback(
             done,
             new Promise<boolean>((resolve, reject) => {
+                const { timeout, ...opts } = options || {};
                 this._enqueueMessage(
                     {
                         type: 'publish',
@@ -284,9 +294,10 @@ export default class ChannelWrapper extends EventEmitter {
                         content,
                         resolve,
                         reject,
+                        options: opts,
                         isTimedout: false,
                     },
-                    options
+                    timeout || this._publishTimeout
                 );
                 this._startWorker();
             })
@@ -311,6 +322,7 @@ export default class ChannelWrapper extends EventEmitter {
         return pb.addCallback(
             done,
             new Promise<boolean>((resolve, reject) => {
+                const { timeout, ...opts } = options || {};
                 this._enqueueMessage(
                     {
                         type: 'sendToQueue',
@@ -318,37 +330,31 @@ export default class ChannelWrapper extends EventEmitter {
                         content,
                         resolve,
                         reject,
+                        options: opts,
                         isTimedout: false,
                     },
-                    options
+                    timeout || this._publishTimeout
                 );
                 this._startWorker();
             })
         );
     }
 
-    private _enqueueMessage(message: Message, options?: PublishOptions) {
-        if (options) {
-            if (options.timeout) {
-                const { timeout, ...opts } = options;
-                message.timeout = setTimeout(() => {
-                    let idx = this._messages.indexOf(message);
+    private _enqueueMessage(message: Message, timeout?: number) {
+        if (timeout) {
+            message.timeout = setTimeout(() => {
+                let idx = this._messages.indexOf(message);
+                if (idx !== -1) {
+                    this._messages.splice(idx, 1);
+                } else {
+                    idx = this._unconfirmedMessages.indexOf(message);
                     if (idx !== -1) {
-                        this._messages.splice(idx, 1);
-                    } else {
-                        idx = this._unconfirmedMessages.indexOf(message);
-                        if (idx !== -1) {
-                            this._unconfirmedMessages.splice(idx, 1);
-                        }
+                        this._unconfirmedMessages.splice(idx, 1);
                     }
-
-                    message.isTimedout = true;
-                    message.reject(new Error('timeout'));
-                }, timeout);
-                message.options = opts;
-            } else {
-                message.options = options;
-            }
+                }
+                message.isTimedout = true;
+                message.reject(new Error('timeout'));
+            }, timeout);
         }
         this._messages.push(message);
     }
@@ -374,6 +380,7 @@ export default class ChannelWrapper extends EventEmitter {
         this._connectionManager = connectionManager;
         this.name = options.name;
 
+        this._publishTimeout = options.publishTimeout;
         this._json = options.json ?? false;
 
         // Array of setup functions to call.

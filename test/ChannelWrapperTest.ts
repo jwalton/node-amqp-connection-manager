@@ -260,7 +260,7 @@ describe('ChannelWrapper', function () {
                     'exchange',
                     'routingKey',
                     Buffer.from('argleblargle'),
-                    undefined,
+                    {},
                 ]);
                 expect(channelWrapper.queueLength(), 'queue length').to.equal(0);
             });
@@ -392,27 +392,29 @@ describe('ChannelWrapper', function () {
         ).to.equal(0);
     });
 
-    it('should timeout published messages', async function () {
+    it('should timeout published message', async function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
         const startTime = Date.now();
-        const errors = await Promise.all([
-            channelWrapper
-                .publish('exchange', 'routingKey', 'argleblargle', {
-                    messageId: 'foo',
-                    timeout: 100,
-                })
-                .catch((err) => err),
-            channelWrapper
-                .sendToQueue('queue', 'argleblargle', {
-                    messageId: 'foo',
-                    timeout: 100,
-                })
-                .catch((err) => err),
-        ]);
+        const error = await channelWrapper
+            .publish('exchange', 'routingKey', 'argleblargle', {
+                timeout: 100,
+            })
+            .catch((err) => err);
         const duration = Date.now() - startTime;
+        expect(error.message).to.equal('timeout');
+        expect(duration).to.be.approximately(100, 10);
+    });
 
-        expect(errors.map((e) => e.message)).to.deep.equal(['timeout', 'timeout']);
+    it('should use default timeout for published messages', async function () {
+        const channelWrapper = new ChannelWrapper(connectionManager, { publishTimeout: 100 });
+
+        const startTime = Date.now();
+        const error = await channelWrapper
+            .publish('exchange', 'routingKey', 'argleblargle')
+            .catch((err) => err);
+        const duration = Date.now() - startTime;
+        expect(error.message).to.equal('timeout');
         expect(duration).to.be.approximately(100, 10);
     });
 
