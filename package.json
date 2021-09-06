@@ -16,9 +16,7 @@
         "dist/**/*"
     ],
     "dependencies": {
-        "promise-breaker": "^5.0.0",
-        "ts-node": "^10.2.1",
-        "typescript": "^4.3.5"
+        "promise-breaker": "^5.0.0"
     },
     "peerDependencies": {
         "amqplib": "*"
@@ -59,7 +57,9 @@
         "pretty-quick": "^3.1.1",
         "promise-tools": "^2.1.0",
         "semantic-release": "^17.1.1",
-        "ts-jest": "^27.0.5"
+        "ts-jest": "^27.0.5",
+        "ts-node": "^10.2.1",
+        "typescript": "^4.3.5"
     },
     "engines": {
         "node": ">=10.0.0",
