@@ -113,10 +113,10 @@ export interface IAmqpConnectionManager {
     isConnected(): boolean;
 
     /** The current connection. */
-    get connection(): Connection | undefined;
+    readonly connection: Connection | undefined;
 
     /** Returns the number of registered channels. */
-    get channelCount(): number;
+    readonly channelCount: number;
 }
 
 //
