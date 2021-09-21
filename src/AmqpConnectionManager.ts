@@ -82,7 +82,8 @@ export interface IAmqpConnectionManager {
     addListener(event: 'unblocked', listener: () => void): this;
     addListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
 
-    listeners(eventName: string | symbol): any;
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    listeners(eventName: string | symbol): Function[];
 
     on(event: string, listener: (...args: any[]) => void): this;
     on(event: 'connect', listener: ConnectListener): this;

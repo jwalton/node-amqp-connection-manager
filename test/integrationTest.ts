@@ -76,7 +76,7 @@ describe('Integration tests', () => {
         let err;
         try {
             await connection.connect();
-        } catch (error) {
+        } catch (error: any) {
             err = error;
         }
         expect(err.message).to.contain('ACCESS-REFUSED');

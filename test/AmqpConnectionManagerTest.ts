@@ -165,7 +165,7 @@ describe('AmqpConnectionManager', function () {
         let err;
         try {
             await amqp.connect({ timeout: 0.1 });
-        } catch (error) {
+        } catch (error: any) {
             err = error;
         }
         expect(err.message).to.equal('amqp-connection-manager: connect timeout');
