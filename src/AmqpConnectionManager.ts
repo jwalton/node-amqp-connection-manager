@@ -1,5 +1,5 @@
 import amqp, { Connection } from 'amqplib';
-import { EventEmitter } from 'events';
+import { EventEmitter, once } from 'events';
 import { TcpSocketConnectOpts } from 'net';
 import pb from 'promise-breaker';
 import { ConnectionOptions } from 'tls';
@@ -82,6 +82,8 @@ export interface IAmqpConnectionManager {
     addListener(event: 'unblocked', listener: () => void): this;
     addListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
 
+    listeners(eventName: string | symbol): any;
+
     on(event: string, listener: (...args: any[]) => void): this;
     on(event: 'connect', listener: ConnectListener): this;
     on(event: 'blocked', listener: (arg: { reason: string }) => void): this;
@@ -108,6 +110,8 @@ export interface IAmqpConnectionManager {
 
     removeListener(event: string, listener: (...args: any[]) => void): this;
 
+    connect(options?: { timeout?: number }): Promise<void>;
+    reconnect(): void;
     createChannel(options?: CreateChannelOpts): ChannelWrapper;
     close(): Promise<void>;
     isConnected(): boolean;
@@ -196,8 +200,43 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         this.setMaxListeners(0);
 
         this._findServers = options.findServers || (() => Promise.resolve(urls));
+    }
 
+    /**
+     * Start the connect retries and await the first connect result. Even if the initial connect fails or timeouts, the
+     * reconnect attempts will continue in the background.
+     * @param [options={}] -
+     * @param [options.timeout] - Time to wait for initial connect
+     */
+    async connect({ timeout }: { timeout?: number } = {}): Promise<void> {
         this._connect();
+
+        let reject: (reason?: any) => void;
+        const onDisconnect = ({ err }: { err: any }) => {
+            // Ignore disconnects caused by dead servers etc., but throw on operational errors like bad credentials.
+            if (err.isOperational) {
+                reject(err);
+            }
+        };
+
+        try {
+            await Promise.race([
+                once(this, 'connect'),
+                new Promise((_resolve, innerReject) => {
+                    reject = innerReject;
+                    this.on('disconnect', onDisconnect);
+                }),
+                ...(timeout
+                    ? [
+                          wait(timeout).promise.then(() => {
+                              throw new Error('amqp-connection-manager: connect timeout');
+                          }),
+                      ]
+                    : []),
+            ]);
+        } finally {
+            this.removeListener('disconnect', onDisconnect);
+        }
     }
 
     // `options` here are any options that can be passed to ChannelWrapper.

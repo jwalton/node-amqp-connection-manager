@@ -44,6 +44,17 @@ interface SendToQueueMessage {
     reject: (err: Error) => void;
 }
 
+interface ConsumerOptions extends amqplib.Options.Consume {
+    prefetch?: number
+}
+
+interface Consumer {
+    consumerTag: string | null;
+    queue: string;
+    onMessage: (msg: amqplib.ConsumeMessage) => void;
+    options: ConsumerOptions;
+}
+
 type Message = PublishMessage | SendToQueueMessage;
 
 const IRRECOVERABLE_ERRORS = [
@@ -87,6 +98,8 @@ export default class ChannelWrapper extends EventEmitter {
     private _unconfirmedMessages: Message[] = [];
     /** Reason code during publish or sendtoqueue messages. */
     private _irrecoverableCode: number | undefined;
+    /** Consumers which will be reconnected on channel errors etc. */
+    private _consumers: Consumer[] = [];
 
     /**
      * The currently connected channel.  Note that not all setup functions
@@ -324,6 +337,8 @@ export default class ChannelWrapper extends EventEmitter {
 
         // Array of setup functions to call.
         this._setups = [];
+        this._consumers = [];
+
         if (options.setup) {
             this._setups.push(options.setup);
         }
@@ -359,10 +374,13 @@ export default class ChannelWrapper extends EventEmitter {
                         this.emit('error', err, { name: this.name });
                     })
                 )
-            ).then(() => {
-                this._settingUp = undefined;
-            });
-
+            )
+                .then(() => {
+                    return Promise.all(this._consumers.map((c) => this._reconnectConsumer(c)));
+                })
+                .then(() => {
+                    this._settingUp = undefined;
+                });
             await this._settingUp;
 
             if (!this._channel) {
@@ -579,6 +597,89 @@ export default class ChannelWrapper extends EventEmitter {
             this._working = false;
             this.emit('error', err);
         }
+    }
+
+    /**
+     * Setup a consumer
+     * This consumer will be reconnected on cancellation and channel errors.
+     */
+    async consume(
+        queue: string,
+        onMessage: Consumer['onMessage'],
+        options: ConsumerOptions = {}
+    ): Promise<void> {
+        const consumer: Consumer = {
+            consumerTag: null,
+            queue,
+            onMessage,
+            options,
+        };
+        this._consumers.push(consumer);
+        await this._consume(consumer);
+    }
+
+    private async _consume(consumer: Consumer): Promise<void> {
+        if (!this._channel) {
+            return;
+        }
+
+        const { prefetch, ...options } = consumer.options;
+        if (typeof prefetch === 'number') {
+            this._channel.prefetch(prefetch, false);
+        }
+
+        const { consumerTag } = await this._channel.consume(
+            consumer.queue,
+            (msg) => {
+                if (!msg) {
+                    consumer.consumerTag = null;
+                    this._reconnectConsumer(consumer).catch((err) => {
+                        if (err.isOperational && err.message.includes('BasicConsume; 404')) {
+                            // Ignore errors caused by queue not declared. In
+                            // those cases the connection will reconnect and
+                            // then consumers reestablished. The full reconnect
+                            // might be avoided if we assert the queue again
+                            // before starting to consume.
+                            return;
+                        }
+                        throw err;
+                    });
+                    return;
+                }
+                consumer.onMessage(msg);
+            },
+            options
+        );
+        consumer.consumerTag = consumerTag;
+    }
+
+    private async _reconnectConsumer(consumer: Consumer): Promise<void> {
+        if (!this._consumers.includes(consumer)) {
+            // Intentionally canceled
+            return;
+        }
+        await this._consume(consumer);
+    }
+
+    /**
+     * Cancel all consumers
+     */
+    async cancelAll(): Promise<void> {
+        const consumers = this._consumers;
+        this._consumers = [];
+        if (!this._channel) {
+            return;
+        }
+
+        const channel = this._channel;
+        await Promise.all(
+            consumers.reduce<any[]>((acc, consumer) => {
+                if (consumer.consumerTag) {
+                    acc.push(channel.cancel(consumer.consumerTag));
+                }
+                return acc;
+            }, [])
+        );
     }
 
     /** Send an `ack` to the underlying channel. */

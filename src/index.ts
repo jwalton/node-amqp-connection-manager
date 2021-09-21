@@ -15,8 +15,14 @@ export function connect(
     urls: ConnectionUrl | ConnectionUrl[] | undefined | null,
     options?: AmqpConnectionManagerOptions
 ): IAmqpConnectionManager {
-    return new AmqpConnectionManager(urls, options);
+    const conn = new AmqpConnectionManager(urls, options);
+    conn.connect().catch(() => {
+        /* noop */
+    });
+    return conn;
 }
+
+export { AmqpConnectionManager as AmqpConnectionManagerClass };
 
 const amqp = { connect };
 
