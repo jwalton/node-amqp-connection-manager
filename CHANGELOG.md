@@ -1,3 +1,15 @@
+# [3.7.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.6.0...v3.7.0) (2021-09-21)
+
+### Bug Fixes
+
+- **AmqpConnectionManager:** IAmqpConnectionManager interface definition ([dedec7e](https://github.com/jwalton/node-amqp-connection-manager/commit/dedec7e24f12395e4ff2424d5f4026a5551ba064))
+
+### Features
+
+- add default publish timeout ([6826be2](https://github.com/jwalton/node-amqp-connection-manager/commit/6826be26ab6ed786832251ee06ff7bfc303d775c))
+- expose AmqpConnectionManagerClass ([835a81f](https://github.com/jwalton/node-amqp-connection-manager/commit/835a81f0c953d5ab2a01611d277478d5b78aa8b0))
+- timeout option for publish ([dee380d](https://github.com/jwalton/node-amqp-connection-manager/commit/dee380d7ed70cc801166e8859fff5e66bd6b9ece))
+
 # [3.6.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.5.2...v3.6.0) (2021-08-27)
 
 ### Features
