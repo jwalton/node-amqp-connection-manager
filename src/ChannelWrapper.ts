@@ -23,6 +23,10 @@ export interface CreateChannelOpts {
      * These will be encoded automatically before being sent.
      */
     json?: boolean;
+    /**
+     * Default publish timeout in ms. Messages not published within the given time are rejected with a timeout error.
+     */
+    publishTimeout?: number;
 }
 
 interface PublishMessage {
@@ -30,22 +34,31 @@ interface PublishMessage {
     exchange: string;
     routingKey: string;
     content: Buffer | string | unknown;
-    options: amqplib.Options.Publish | undefined;
+    options?: amqplib.Options.Publish;
     resolve: (result: boolean) => void;
     reject: (err: Error) => void;
+    timeout?: NodeJS.Timeout;
+    isTimedout: boolean;
 }
 
 interface SendToQueueMessage {
     type: 'sendToQueue';
     queue: string;
     content: Buffer | string | unknown;
-    options: amqplib.Options.Publish | undefined;
+    options?: amqplib.Options.Publish;
     resolve: (result: boolean) => void;
     reject: (err: Error) => void;
+    timeout?: NodeJS.Timeout;
+    isTimedout: boolean;
+}
+
+interface PublishOptions extends Options.Publish {
+    /** Message will be rejected after timeout ms */
+    timeout?: number;
 }
 
 interface ConsumerOptions extends amqplib.Options.Consume {
-    prefetch?: number
+    prefetch?: number;
 }
 
 interface Consumer {
@@ -125,6 +138,11 @@ export default class ChannelWrapper extends EventEmitter {
      * True if the underlying channel has room for more messages.
      */
     private _channelHasRoom = true;
+
+    /**
+     * Default publish timeout
+     */
+    private _publishTimeout?: number;
 
     public name?: string;
 
@@ -261,21 +279,26 @@ export default class ChannelWrapper extends EventEmitter {
         exchange: string,
         routingKey: string,
         content: Buffer | string | unknown,
-        options?: amqplib.Options.Publish,
+        options?: PublishOptions,
         done?: pb.Callback<boolean>
     ): Promise<boolean> {
         return pb.addCallback(
             done,
             new Promise<boolean>((resolve, reject) => {
-                this._messages.push({
-                    type: 'publish',
-                    exchange,
-                    routingKey,
-                    content,
-                    options,
-                    resolve,
-                    reject,
-                });
+                const { timeout, ...opts } = options || {};
+                this._enqueueMessage(
+                    {
+                        type: 'publish',
+                        exchange,
+                        routingKey,
+                        content,
+                        resolve,
+                        reject,
+                        options: opts,
+                        isTimedout: false,
+                    },
+                    timeout || this._publishTimeout
+                );
                 this._startWorker();
             })
         );
@@ -293,23 +316,47 @@ export default class ChannelWrapper extends EventEmitter {
     sendToQueue(
         queue: string,
         content: Buffer | string | unknown,
-        options?: Options.Publish,
+        options?: PublishOptions,
         done?: pb.Callback<boolean>
     ): Promise<boolean> {
         return pb.addCallback(
             done,
             new Promise<boolean>((resolve, reject) => {
-                this._messages.push({
-                    type: 'sendToQueue',
-                    queue,
-                    content,
-                    options,
-                    resolve,
-                    reject,
-                });
-                return this._startWorker();
+                const { timeout, ...opts } = options || {};
+                this._enqueueMessage(
+                    {
+                        type: 'sendToQueue',
+                        queue,
+                        content,
+                        resolve,
+                        reject,
+                        options: opts,
+                        isTimedout: false,
+                    },
+                    timeout || this._publishTimeout
+                );
+                this._startWorker();
             })
         );
+    }
+
+    private _enqueueMessage(message: Message, timeout?: number) {
+        if (timeout) {
+            message.timeout = setTimeout(() => {
+                let idx = this._messages.indexOf(message);
+                if (idx !== -1) {
+                    this._messages.splice(idx, 1);
+                } else {
+                    idx = this._unconfirmedMessages.indexOf(message);
+                    if (idx !== -1) {
+                        this._unconfirmedMessages.splice(idx, 1);
+                    }
+                }
+                message.isTimedout = true;
+                message.reject(new Error('timeout'));
+            }, timeout);
+        }
+        this._messages.push(message);
     }
 
     /**
@@ -333,6 +380,7 @@ export default class ChannelWrapper extends EventEmitter {
         this._connectionManager = connectionManager;
         this.name = options.name;
 
+        this._publishTimeout = options.publishTimeout;
         this._json = options.json ?? false;
 
         // Array of setup functions to call.
@@ -437,13 +485,21 @@ export default class ChannelWrapper extends EventEmitter {
             this._working = false;
             if (this._messages.length !== 0) {
                 // Reject any unsent messages.
-                this._messages.forEach((message) => message.reject(new Error('Channel closed')));
+                this._messages.forEach((message) => {
+                    if (message.timeout) {
+                        clearTimeout(message.timeout);
+                    }
+                    message.reject(new Error('Channel closed'));
+                });
             }
             if (this._unconfirmedMessages.length !== 0) {
                 // Reject any unconfirmed messages.
-                this._unconfirmedMessages.forEach((message) =>
-                    message.reject(new Error('Channel closed'))
-                );
+                this._unconfirmedMessages.forEach((message) => {
+                    if (message.timeout) {
+                        clearTimeout(message.timeout);
+                    }
+                    message.reject(new Error('Channel closed'));
+                });
             }
 
             this._connectionManager.removeListener('connect', this._onConnect);
@@ -554,6 +610,14 @@ export default class ChannelWrapper extends EventEmitter {
                             encodedMessage,
                             message.options,
                             (err) => {
+                                if (message.isTimedout) {
+                                    return;
+                                }
+
+                                if (message.timeout) {
+                                    clearTimeout(message.timeout);
+                                }
+
                                 if (err) {
                                     this._messageRejected(message, err);
                                 } else {
@@ -570,6 +634,14 @@ export default class ChannelWrapper extends EventEmitter {
                             encodedMessage,
                             message.options,
                             (err) => {
+                                if (message.isTimedout) {
+                                    return;
+                                }
+
+                                if (message.timeout) {
+                                    clearTimeout(message.timeout);
+                                }
+
                                 if (err) {
                                     this._messageRejected(message, err);
                                 } else {
