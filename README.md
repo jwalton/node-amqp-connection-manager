@@ -139,6 +139,7 @@ Options:
   arbitrary data in.
 - `options.json` if true, then ChannelWrapper assumes all messages passed to `publish()` and `sendToQueue()`
   are plain JSON objects. These will be encoded automatically before being sent.
+- `options.publishTimeout` - a default timeout for messages published to this channel.
 
 ### AmqpConnectionManager#isConnected()
 
@@ -182,6 +183,12 @@ These work exactly like their counterparts in amqplib's Channel, except that the
 callback) which resolves when the message is confirmed to have been delivered to the broker. The promise rejects if
 either the broker refuses the message, or if `close()` is called on the ChannelWrapper before the message can be
 delivered.
+
+Both of these functions take an additional option when passing options:
+
+- `timeout` - If specified, if a messages is not acked by the amqp broker within the specified number of milliseconds,
+  the message will be rejected. Note that the message _may_ still end up getting delivered after the timeout, as we
+  have no way to cancel the in-flight request.
 
 ### ChannelWrapper#ack and ChannelWrapper#nack
 
