@@ -3,7 +3,7 @@ import chai from 'chai';
 import chaiJest from 'chai-jest';
 import pEvent from 'p-event';
 import { defer, timeout } from 'promise-tools';
-import amqp from '../src';
+import amqp, { AmqpConnectionManagerClass as AmqpConnectionManager } from '../src';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
 
 chai.use(chaiJest);
@@ -67,6 +67,19 @@ describe('Integration tests', () => {
             'amqp://guest:guest@localhost:5672/%2F?heartbeat=10&channelMax=100'
         );
         await timeout(pEvent(connection, 'connect'), 3000);
+    });
+
+    // This test might cause jest to complain about leaked resources due to the bug described and fixed by:
+    // https://github.com/squaremo/amqp.node/pull/584
+    it('should throw on awaited connect with wrong password', async () => {
+        connection = new AmqpConnectionManager('amqp://guest:wrong@localhost');
+        let err;
+        try {
+            await connection.connect();
+        } catch (error: any) {
+            err = error;
+        }
+        expect(err.message).to.contain('ACCESS-REFUSED');
     });
 
     it('send and receive messages', async () => {
