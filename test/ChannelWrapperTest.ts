@@ -29,7 +29,9 @@ function makeMessage(content: string): amqplib.Message {
     };
 }
 
-function getUnderlyingChannel(channelWrapper: ChannelWrapper): fixtures.FakeConfirmChannel {
+function getUnderlyingChannel(
+    channelWrapper: ChannelWrapper
+): fixtures.FakeConfirmChannel | fixtures.FakeChannel {
     const channel = (channelWrapper as any)._channel;
     if (!channel) {
         throw new Error('No underlying channel');
@@ -215,6 +217,19 @@ describe('ChannelWrapper', function () {
 
         expect(errorHandler).to.have.beenCalledTimes(1);
         expect(lastArgs(errorHandler)?.[0]?.message).to.equal('No channel for you!');
+    });
+
+    it('should create plain channel', async function () {
+        const setup = jest.fn().mockImplementation(() => promiseTools.delay(10));
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            setup,
+            confirm: false,
+        });
+        await channelWrapper.waitForConnect();
+
+        expect(setup).to.have.beenCalledTimes(1);
     });
 
     it('should work if there are no setup functions', async function () {

@@ -132,8 +132,9 @@ Options:
   Note that `this` inside the setup function will the returned ChannelWrapper.
   The ChannelWrapper has a special `context` member you can use to store
   arbitrary data in.
-- `options.json` if true, then ChannelWrapper assumes all messages passed to `publish()` and `sendToQueue()`
+- `options.json` - if true, then ChannelWrapper assumes all messages passed to `publish()` and `sendToQueue()`
   are plain JSON objects. These will be encoded automatically before being sent.
+- `options.confirm` - if true (default), the created channel will be a ConfirmChannel
 - `options.publishTimeout` - a default timeout for messages published to this channel.
 
 ### AmqpConnectionManager#isConnected()
