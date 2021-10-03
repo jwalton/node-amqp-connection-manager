@@ -625,7 +625,7 @@ export default class ChannelWrapper extends EventEmitter {
 
         const { prefetch, ...options } = consumer.options;
         if (typeof prefetch === 'number') {
-            this._channel.prefetch(prefetch, false);
+            await this._channel.prefetch(prefetch, false);
         }
 
         const { consumerTag } = await this._channel.consume(
