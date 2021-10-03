@@ -1061,7 +1061,7 @@ describe('ChannelWrapper', function () {
             (msg) => {
                 queue1.push(msg);
             },
-            { noAck: true, prefetch: 10 },
+            { noAck: true, prefetch: 10 }
         );
 
         const queue2: any[] = [];
@@ -1131,6 +1131,65 @@ describe('ChannelWrapper', function () {
         onQueue2(1);
 
         await channelWrapper.cancelAll();
+
+        // Consumers shouldn't be resumed after reconnect when canceled
+        connectionManager.simulateDisconnect();
+        connectionManager.simulateConnect();
+        await channelWrapper.waitForConnect();
+
+        expect(queue1).to.deep.equal([1]);
+        expect(queue2).to.deep.equal([1]);
+        expect(consumerTag).to.equal(2);
+        expect(canceledTags).to.deep.equal(['0', '1']);
+    });
+
+    it('should be able to cancel specific consumers', async function () {
+        let onQueue1: any = null;
+        let onQueue2: any = null;
+        let consumerTag = 0;
+        const canceledTags: number[] = [];
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel: amqplib.ConfirmChannel) {
+                channel.consume = jest.fn().mockImplementation((queue, onMsg, _options) => {
+                    if (queue === 'queue1') {
+                        onQueue1 = onMsg;
+                    } else {
+                        onQueue2 = onMsg;
+                    }
+                    return Promise.resolve({
+                        consumerTag: _options.consumerTag || `${consumerTag++}`,
+                    });
+                });
+                channel.cancel = jest.fn().mockImplementation((consumerTag) => {
+                    canceledTags.push(consumerTag);
+                    if (consumerTag === '0') {
+                        onQueue1(null);
+                    } else if (consumerTag === '1') {
+                        onQueue2(null);
+                    }
+                    return Promise.resolve();
+                });
+            },
+        });
+        await channelWrapper.waitForConnect();
+
+        const queue1: any[] = [];
+        const cancelConsumerQueue1 = await channelWrapper.consume('queue1', (msg) => {
+            queue1.push(msg);
+        });
+
+        const queue2: any[] = [];
+        const cancelConsumerQueue2 = await channelWrapper.consume('queue2', (msg) => {
+            queue2.push(msg);
+        });
+
+        onQueue1(1);
+        onQueue2(1);
+
+        await cancelConsumerQueue1();
+        await cancelConsumerQueue2();
 
         // Consumers shouldn't be resumed after reconnect when canceled
         connectionManager.simulateDisconnect();

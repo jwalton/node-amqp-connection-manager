@@ -55,6 +55,8 @@ interface Consumer {
     options: ConsumerOptions;
 }
 
+type CancelConsumer = () => Promise<void>;
+
 type Message = PublishMessage | SendToQueueMessage;
 
 const IRRECOVERABLE_ERRORS = [
@@ -602,12 +604,13 @@ export default class ChannelWrapper extends EventEmitter {
     /**
      * Setup a consumer
      * This consumer will be reconnected on cancellation and channel errors.
+     * @returns CancelConsumer - a function which cancels this consumer.
      */
     async consume(
         queue: string,
         onMessage: Consumer['onMessage'],
         options: ConsumerOptions = {}
-    ): Promise<void> {
+    ): Promise<CancelConsumer> {
         const consumer: Consumer = {
             consumerTag: null,
             queue,
@@ -616,6 +619,16 @@ export default class ChannelWrapper extends EventEmitter {
         };
         this._consumers.push(consumer);
         await this._consume(consumer);
+
+        const cancelConsume = async () => {
+            if (this._channel && consumer.consumerTag) {
+                await this._channel.cancel(consumer.consumerTag);
+            }
+
+            this._consumers = this._consumers.filter((item) => item !== consumer);
+        };
+
+        return cancelConsume;
     }
 
     private async _consume(consumer: Consumer): Promise<void> {
@@ -650,7 +663,7 @@ export default class ChannelWrapper extends EventEmitter {
             },
             options
         );
-        consumer.consumerTag = consumerTag;
+        consumer.consumerTag = consumer.options.consumerTag = consumerTag;
     }
 
     private async _reconnectConsumer(consumer: Consumer): Promise<void> {
