@@ -538,7 +538,7 @@ describe('ChannelWrapper', function () {
         return channelWrapper.nack(makeMessage('c'), false, true);
     });
 
-    it('should proxy assertQueue, bindQueue, assertExchange to the underlying channel', function () {
+    it('should proxy assertQueue, checkQueue, bindQueue, assertExchange, checkExchange to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
@@ -549,6 +549,10 @@ describe('ChannelWrapper', function () {
             expect(channel.assertQueue).to.have.beenCalledTimes(1);
             expect(channel.assertQueue).to.have.beenCalledWith('dog', undefined);
 
+            channelWrapper.checkQueue('cat');
+            expect(channel.checkQueue).to.have.beenCalledTimes(1);
+            expect(channel.checkQueue).to.have.beenCalledWith('cat');
+
             channelWrapper.bindQueue('dog', 'bone', '.*');
             expect(channel.bindQueue).to.have.beenCalledTimes(1);
             expect(channel.bindQueue).to.have.beenCalledWith('dog', 'bone', '.*', undefined);
@@ -556,6 +560,10 @@ describe('ChannelWrapper', function () {
             channelWrapper.assertExchange('bone', 'topic');
             expect(channel.assertExchange).to.have.beenCalledTimes(1);
             expect(channel.assertExchange).to.have.beenCalledWith('bone', 'topic', undefined);
+
+            channelWrapper.checkExchange('fish');
+            expect(channel.checkExchange).to.have.beenCalledTimes(1);
+            expect(channel.checkExchange).to.have.beenCalledWith('fish');
         });
     });
 
@@ -588,6 +596,32 @@ describe('ChannelWrapper', function () {
         channelWrapper.assertQueue('dog', { durable: true });
         channelWrapper.bindQueue('dog', 'bone', '.*');
         channelWrapper.assertExchange('bone', 'topic');
+    });
+
+    it('should proxy bindExchange, unbindExchange and deleteExchange to the underlying channel', function () {
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager);
+        return channelWrapper.waitForConnect().then(function () {
+            // get the underlying channel
+            const channel = getUnderlyingChannel(channelWrapper);
+
+            channelWrapper.bindExchange('paris', 'london', '*');
+            expect(channel.bindExchange).to.have.beenCalledTimes(1);
+            expect(channel.bindExchange).to.have.beenCalledWith('paris', 'london', '*', undefined);
+
+            channelWrapper.unbindExchange('paris', 'london', '*');
+            expect(channel.unbindExchange).to.have.beenCalledTimes(1);
+            expect(channel.unbindExchange).to.have.beenCalledWith(
+                'paris',
+                'london',
+                '*',
+                undefined
+            );
+
+            channelWrapper.deleteExchange('chicago');
+            expect(channel.deleteExchange).to.have.beenCalledTimes(1);
+            expect(channel.deleteExchange).to.have.beenCalledWith('chicago', undefined);
+        });
     });
 
     // Not much to test here - just make sure we don't throw any exceptions or anything weird.  :)
