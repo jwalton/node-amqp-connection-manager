@@ -662,7 +662,7 @@ export default class ChannelWrapper extends EventEmitter {
             },
             options
         );
-        consumer.consumerTag = consumer.options.consumerTag = consumerTag;
+        consumer.consumerTag = consumerTag;
     }
 
     private async _reconnectConsumer(consumer: Consumer): Promise<void> {
