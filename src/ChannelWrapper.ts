@@ -622,10 +622,9 @@ export default class ChannelWrapper extends EventEmitter {
 
         const cancelConsume = async () => {
             if (this._channel && consumer.consumerTag) {
+                this._consumers = this._consumers.filter((item) => item !== consumer);
                 await this._channel.cancel(consumer.consumerTag);
             }
-
-            this._consumers = this._consumers.filter((item) => item !== consumer);
         };
 
         return cancelConsume;
