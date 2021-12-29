@@ -1,3 +1,9 @@
+# [3.8.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.7.0...v3.8.0) (2021-12-29)
+
+### Features
+
+- plain channel ([328d31d](https://github.com/jwalton/node-amqp-connection-manager/commit/328d31d758ad32df49c8fe03d89b1f6d06a9465b))
+
 # [3.7.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.6.0...v3.7.0) (2021-09-21)
 
 ### Bug Fixes
