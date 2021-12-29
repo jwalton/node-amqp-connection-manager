@@ -44,7 +44,7 @@
         "eslint": "^7.8.1",
         "eslint-config-prettier": "^8.3.0",
         "eslint-plugin-import": "^2.24.1",
-        "eslint-plugin-promise": "^5.0.0",
+        "eslint-plugin-promise": "^6.0.0",
         "greenkeeper-lockfile": "^1.14.0",
         "husky": "^7.0.1",
         "istanbul": "^0.4.0",
