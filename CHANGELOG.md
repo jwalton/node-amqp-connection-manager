@@ -1,3 +1,9 @@
+## [3.8.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.8.0...v3.8.1) (2021-12-29)
+
+### Bug Fixes
+
+- batch sending stops ([6a5b589](https://github.com/jwalton/node-amqp-connection-manager/commit/6a5b5890de3e2d543e27f4c078d27dc32b8b23d9)), closes [#196](https://github.com/jwalton/node-amqp-connection-manager/issues/196)
+
 # [3.8.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.7.0...v3.8.0) (2021-12-29)
 
 ### Features
