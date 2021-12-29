@@ -63,7 +63,7 @@ export class FakeAmqp {
     }
 }
 
-export class FakeConfirmChannel extends EventEmitter {
+export class FakeChannel extends EventEmitter {
     publish = jest
         .fn()
         .mockImplementation(
@@ -71,11 +71,9 @@ export class FakeConfirmChannel extends EventEmitter {
                 _exchange: string,
                 _routingKey: string,
                 content: Buffer,
-                _options?: Options.Publish,
-                callback?: (err: any, ok: Replies.Empty) => void
+                _options?: Options.Publish
             ): boolean => {
                 this.emit('publish', content);
-                callback?.(null, {});
                 return true;
             }
         );
@@ -83,14 +81,8 @@ export class FakeConfirmChannel extends EventEmitter {
     sendToQueue = jest
         .fn()
         .mockImplementation(
-            (
-                _queue: string,
-                content: Buffer,
-                _options?: Options.Publish,
-                callback?: (err: any, ok: Replies.Empty) => void
-            ): boolean => {
+            (_queue: string, content: Buffer, _options?: Options.Publish): boolean => {
                 this.emit('sendToQueue', content);
-                callback?.(null, {});
                 return true;
             }
         );
@@ -154,6 +146,39 @@ export class FakeConfirmChannel extends EventEmitter {
     prefetch = jest.fn().mockImplementation((_prefetch: number, _isGlobal: boolean): void => {});
 }
 
+export class FakeConfirmChannel extends FakeChannel {
+    publish = jest
+        .fn()
+        .mockImplementation(
+            (
+                _exchange: string,
+                _routingKey: string,
+                content: Buffer,
+                _options?: Options.Publish,
+                callback?: (err: any, ok: Replies.Empty) => void
+            ): boolean => {
+                this.emit('publish', content);
+                callback?.(null, {});
+                return true;
+            }
+        );
+
+    sendToQueue = jest
+        .fn()
+        .mockImplementation(
+            (
+                _queue: string,
+                content: Buffer,
+                _options?: Options.Publish,
+                callback?: (err: any, ok: Replies.Empty) => void
+            ): boolean => {
+                this.emit('sendToQueue', content);
+                callback?.(null, {});
+                return true;
+            }
+        );
+}
+
 export class FakeConnection extends EventEmitter {
     url: string;
     _closed = false;
@@ -162,6 +187,10 @@ export class FakeConnection extends EventEmitter {
         super();
         this.url = url;
         this._closed = false;
+    }
+
+    createChannel() {
+        return Promise.resolve(new exports.FakeChannel());
     }
 
     createConfirmChannel() {

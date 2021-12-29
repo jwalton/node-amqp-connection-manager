@@ -1,4 +1,4 @@
-import { ConfirmChannel, ConsumeMessage } from 'amqplib';
+import { Channel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import chai from 'chai';
 import chaiJest from 'chai-jest';
 import pEvent from 'p-event';
@@ -133,6 +133,41 @@ describe('Integration tests', () => {
 
         await sendChannel.close();
         await receiveWrapper.close();
+    });
+
+    it('send and receive messages with plain channel', async () => {
+        const queueName = 'testQueue2';
+        const content = `hello world - ${Date.now()}`;
+
+        connection = new AmqpConnectionManager('amqp://localhost');
+        const sendChannel = connection.createChannel({
+            confirm: false,
+            setup: async (channel: Channel) => {
+                await channel.assertQueue(queueName, { durable: false, autoDelete: true });
+            },
+        });
+
+        const receiveChannel = connection.createChannel({
+            confirm: false,
+            setup: async (channel: Channel) => {
+                await channel.assertQueue(queueName, { durable: false, autoDelete: true });
+            },
+        });
+
+        await connection.connect();
+
+        const rxPromise = defer<ConsumeMessage>();
+        await receiveChannel.consume(queueName, (message) => {
+            rxPromise.resolve(message);
+        });
+
+        await sendChannel.sendToQueue(queueName, content);
+
+        const result = await timeout(rxPromise.promise, 3000);
+        expect(result.content.toString()).to.equal(content);
+
+        await sendChannel.close();
+        await receiveChannel.close();
     });
 
     it('RPC', async () => {

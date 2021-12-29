@@ -9,7 +9,12 @@ export type {
     ConnectionUrl,
     IAmqpConnectionManager as AmqpConnectionManager,
 } from './AmqpConnectionManager.js';
-export type { CreateChannelOpts, default as ChannelWrapper, SetupFunc } from './ChannelWrapper.js';
+export type {
+    CreateChannelOpts,
+    default as ChannelWrapper,
+    SetupFunc,
+    Channel,
+} from './ChannelWrapper.js';
 
 export function connect(
     urls: ConnectionUrl | ConnectionUrl[] | undefined | null,

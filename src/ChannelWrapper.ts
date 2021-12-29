@@ -1,14 +1,18 @@
-import * as amqplib from 'amqplib';
-import { ConfirmChannel, Options } from 'amqplib';
+import type * as amqplib from 'amqplib';
+import { Options } from 'amqplib';
 import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
 import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
 
 const MAX_MESSAGES_PER_BATCH = 1000;
 
+export type Channel = amqplib.ConfirmChannel | amqplib.Channel;
+
 export type SetupFunc =
-    | ((channel: ConfirmChannel, callback: (error?: Error) => void) => void)
-    | ((channel: ConfirmChannel) => Promise<void>);
+    | ((channel: Channel, callback: (error?: Error) => void) => void)
+    | ((channel: Channel) => Promise<void>)
+    | ((channel: amqplib.ConfirmChannel, callback: (error?: Error) => void) => void)
+    | ((channel: amqplib.ConfirmChannel) => Promise<void>);
 
 export interface CreateChannelOpts {
     /**  Name for this channel. Used for debugging. */
@@ -18,6 +22,10 @@ export interface CreateChannelOpts {
      * This function should either accept a callback, or return a Promise. See addSetup below
      */
     setup?: SetupFunc;
+    /**
+     * True to create a ConfirmChannel (default). False to create a regular Channel.
+     */
+    confirm?: boolean;
     /**
      * if true, then ChannelWrapper assumes all messages passed to publish() and sendToQueue() are plain JSON objects.
      * These will be encoded automatically before being sent.
@@ -33,7 +41,7 @@ interface PublishMessage {
     type: 'publish';
     exchange: string;
     routingKey: string;
-    content: Buffer | string | unknown;
+    content: Buffer;
     options?: amqplib.Options.Publish;
     resolve: (result: boolean) => void;
     reject: (err: Error) => void;
@@ -44,7 +52,7 @@ interface PublishMessage {
 interface SendToQueueMessage {
     type: 'sendToQueue';
     queue: string;
-    content: Buffer | string | unknown;
+    content: Buffer;
     options?: amqplib.Options.Publish;
     resolve: (result: boolean) => void;
     reject: (err: Error) => void;
@@ -119,8 +127,12 @@ export default class ChannelWrapper extends EventEmitter {
      * have been run on this channel until `@_settingUp` is either null or
      * resolved.
      */
-    private _channel?: amqplib.ConfirmChannel;
+    private _channel?: Channel;
 
+    /**
+     * True to create a ConfirmChannel. False to create a regular Channel.
+     */
+    private _confirm = true;
     /**
      * True if the "worker" is busy sending messages.  False if we need to
      * start the worker to get stuff done.
@@ -234,11 +246,7 @@ export default class ChannelWrapper extends EventEmitter {
      * @param {function} [done] - Optional callback.
      * @returns {void | Promise} - Resolves when complete.
      */
-    removeSetup(
-        setup: SetupFunc,
-        teardown?: SetupFunc,
-        done?: pb.Callback<void>
-    ): Promise<void> {
+    removeSetup(setup: SetupFunc, teardown?: SetupFunc, done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(done, () => {
             this._setups = this._setups.filter((s) => s !== setup);
 
@@ -291,7 +299,7 @@ export default class ChannelWrapper extends EventEmitter {
                         type: 'publish',
                         exchange,
                         routingKey,
-                        content,
+                        content: this._getEncodedMessage(content),
                         resolve,
                         reject,
                         options: opts,
@@ -319,6 +327,8 @@ export default class ChannelWrapper extends EventEmitter {
         options?: PublishOptions,
         done?: pb.Callback<boolean>
     ): Promise<boolean> {
+        const encodedContent = this._getEncodedMessage(content);
+
         return pb.addCallback(
             done,
             new Promise<boolean>((resolve, reject) => {
@@ -327,7 +337,7 @@ export default class ChannelWrapper extends EventEmitter {
                     {
                         type: 'sendToQueue',
                         queue,
-                        content,
+                        content: encodedContent,
                         resolve,
                         reject,
                         options: opts,
@@ -378,6 +388,7 @@ export default class ChannelWrapper extends EventEmitter {
         this._onConnect = this._onConnect.bind(this);
         this._onDisconnect = this._onDisconnect.bind(this);
         this._connectionManager = connectionManager;
+        this._confirm = options.confirm ?? true;
         this.name = options.name;
 
         this._publishTimeout = options.publishTimeout;
@@ -404,7 +415,12 @@ export default class ChannelWrapper extends EventEmitter {
         this._irrecoverableCode = undefined;
 
         try {
-            const channel = await connection.createConfirmChannel();
+            let channel: Channel;
+            if (this._confirm) {
+                channel = await connection.createConfirmChannel();
+            } else {
+                channel = await connection.createChannel();
+            }
 
             this._channel = channel;
             this._channelHasRoom = true;
@@ -447,7 +463,7 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     // Called whenever the channel closes.
-    private _onChannelClose(channel: amqplib.ConfirmChannel): void {
+    private _onChannelClose(channel: Channel): void {
         if (this._channel === channel) {
             this._channel = undefined;
         }
@@ -552,7 +568,7 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    private _getEncodedMessage(content: Message['content']): Buffer {
+    private _getEncodedMessage(content: Buffer | string | unknown): Buffer {
         let encodedMessage: Buffer;
 
         if (this._json) {
@@ -597,58 +613,81 @@ export default class ChannelWrapper extends EventEmitter {
                     break;
                 }
 
-                this._unconfirmedMessages.push(message);
-
-                const encodedMessage = this._getEncodedMessage(message.content);
+                let thisCanSend = true;
 
                 switch (message.type) {
                     case 'publish': {
-                        let thisCanSend = true;
-                        thisCanSend = this._channelHasRoom = channel.publish(
-                            message.exchange,
-                            message.routingKey,
-                            encodedMessage,
-                            message.options,
-                            (err) => {
-                                if (message.isTimedout) {
-                                    return;
-                                }
+                        if (this._confirm) {
+                            this._unconfirmedMessages.push(message);
+                            thisCanSend = this._channelHasRoom = channel.publish(
+                                message.exchange,
+                                message.routingKey,
+                                message.content,
+                                message.options,
+                                (err) => {
+                                    if (message.isTimedout) {
+                                        return;
+                                    }
 
-                                if (message.timeout) {
-                                    clearTimeout(message.timeout);
-                                }
+                                    if (message.timeout) {
+                                        clearTimeout(message.timeout);
+                                    }
 
-                                if (err) {
-                                    this._messageRejected(message, err);
-                                } else {
-                                    this._messageResolved(message, thisCanSend);
+                                    if (err) {
+                                        this._messageRejected(message, err);
+                                    } else {
+                                        this._messageResolved(message, thisCanSend);
+                                    }
                                 }
+                            );
+                        } else {
+                            if (message.timeout) {
+                                clearTimeout(message.timeout);
                             }
-                        );
+                            thisCanSend = this._channelHasRoom = channel.publish(
+                                message.exchange,
+                                message.routingKey,
+                                message.content,
+                                message.options
+                            );
+                            message.resolve(thisCanSend);
+                        }
                         break;
                     }
                     case 'sendToQueue': {
-                        let thisCanSend = true;
-                        thisCanSend = this._channelHasRoom = channel.sendToQueue(
-                            message.queue,
-                            encodedMessage,
-                            message.options,
-                            (err) => {
-                                if (message.isTimedout) {
-                                    return;
-                                }
+                        if (this._confirm) {
+                            this._unconfirmedMessages.push(message);
+                            thisCanSend = this._channelHasRoom = channel.sendToQueue(
+                                message.queue,
+                                message.content,
+                                message.options,
+                                (err) => {
+                                    if (message.isTimedout) {
+                                        return;
+                                    }
 
-                                if (message.timeout) {
-                                    clearTimeout(message.timeout);
-                                }
+                                    if (message.timeout) {
+                                        clearTimeout(message.timeout);
+                                    }
 
-                                if (err) {
-                                    this._messageRejected(message, err);
-                                } else {
-                                    this._messageResolved(message, thisCanSend);
+                                    if (err) {
+                                        this._messageRejected(message, err);
+                                    } else {
+                                        this._messageResolved(message, thisCanSend);
+                                    }
                                 }
+                            );
+                        } else {
+                            if (message.timeout) {
+                                clearTimeout(message.timeout);
                             }
-                        );
+                            thisCanSend = this._channelHasRoom = channel.sendToQueue(
+                                message.queue,
+                                message.content,
+                                message.options
+                            );
+                            message.resolve(thisCanSend);
+                        }
                         break;
                     }
                     /* istanbul ignore next */
