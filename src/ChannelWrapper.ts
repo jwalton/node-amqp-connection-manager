@@ -699,9 +699,9 @@ export default class ChannelWrapper extends EventEmitter {
             // If we didn't send all the messages, send some more...
             if (this._channelHasRoom && this._messages.length > 0) {
                 setImmediate(() => this._publishQueuedMessages(workerNumber));
+            } else {
+                this._working = false;
             }
-
-            this._working = false;
 
             /* istanbul ignore next */
         } catch (err) {
