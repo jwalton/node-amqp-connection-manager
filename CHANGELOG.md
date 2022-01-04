@@ -1,3 +1,9 @@
+# [3.9.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.8.1...v3.9.0) (2022-01-04)
+
+### Features
+
+- proxying every exchange function of amqplib ([bca347c](https://github.com/jwalton/node-amqp-connection-manager/commit/bca347c437ec116249a671b4b903d7668e097cf8))
+
 ## [3.8.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.8.0...v3.8.1) (2021-12-29)
 
 ### Bug Fixes
