@@ -876,6 +876,57 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
+    /** Send a `bindExchange` to the underlying channel. */
+    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+    async bindExchange(
+        destination: string,
+        source: string,
+        pattern: string,
+        args?: any
+    ): Promise<amqplib.Replies.Empty> {
+        if (this._channel) {
+            return await this._channel.bindExchange(destination, source, pattern, args);
+        } else {
+            throw new Error(`Not connected.`);
+        }
+    }
+
+    /** Send a `checkExchange` to the underlying channel. */
+    async checkExchange(exchange: string): Promise<amqplib.Replies.Empty> {
+        if (this._channel) {
+            return await this._channel.checkExchange(exchange);
+        } else {
+            throw new Error(`Not connected.`);
+        }
+    }
+
+    /** Send a `deleteExchange` to the underlying channel. */
+    async deleteExchange(
+        exchange: string,
+        options?: Options.DeleteExchange
+    ): Promise<amqplib.Replies.Empty> {
+        if (this._channel) {
+            return await this._channel.deleteExchange(exchange, options);
+        } else {
+            throw new Error(`Not connected.`);
+        }
+    }
+
+    /** Send a `unbindExchange` to the underlying channel. */
+    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+    async unbindExchange(
+        destination: string,
+        source: string,
+        pattern: string,
+        args?: any
+    ): Promise<amqplib.Replies.Empty> {
+        if (this._channel) {
+            return await this._channel.unbindExchange(destination, source, pattern, args);
+        } else {
+            throw new Error(`Not connected.`);
+        }
+    }
+
     /** Send a `get` to the underlying channel. */
     async get(queue: string, options?: Options.Get): Promise<amqplib.GetMessage | false> {
         if (this._channel) {

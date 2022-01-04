@@ -114,6 +114,12 @@ export class FakeChannel extends EventEmitter {
             };
         });
 
+    checkQueue = jest
+        .fn()
+        .mockImplementation(async function (_queue: string): Promise<Replies.Empty> {
+            return {};
+        });
+
     bindQueue = jest
         .fn()
         .mockImplementation(async function (
@@ -133,6 +139,43 @@ export class FakeChannel extends EventEmitter {
             _options?: Options.AssertExchange
         ): Promise<Replies.AssertExchange> {
             return { exchange };
+        });
+
+    bindExchange = jest
+        .fn()
+        .mockImplementation(async function (
+            _destination: string,
+            _source: string,
+            _pattern: string,
+            _args?: any
+        ): Promise<Replies.Empty> {
+            return {};
+        });
+
+    checkExchange = jest
+        .fn()
+        .mockImplementation(async function (_exchange: string): Promise<Replies.Empty> {
+            return {};
+        });
+
+    deleteExchange = jest
+        .fn()
+        .mockImplementation(async function (
+            _exchange: string,
+            _options?: Options.DeleteExchange
+        ): Promise<Replies.Empty> {
+            return {};
+        });
+
+    unbindExchange = jest
+        .fn()
+        .mockImplementation(async function (
+            _destination: string,
+            _source: string,
+            _pattern: string,
+            _args?: any
+        ): Promise<Replies.Empty> {
+            return {};
         });
 
     close = jest.fn().mockImplementation(async (): Promise<void> => {
