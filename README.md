@@ -106,7 +106,7 @@ Options:
 - `options.reconnectTimeInSeconds` - The time to wait before trying to reconnect. If not specified,
   defaults to `heartbeatIntervalInSeconds`.
 - `options.findServers(callback)` is a function which returns one or more servers to connect to. This should
-  return either a single URL or an array of URLs. This is handy when you're using a service discovery mechanism
+  return either a single URL or an array of URLs. This is handy when you're using a service discovery mechanism.
   such as Consul or etcd. Instead of taking a `callback`, this can also return a Promise. Note that if this
   is supplied, then `urls` is ignored.
 - `options.connectionOptions` is passed as options to the amqplib connect method.
@@ -114,6 +114,7 @@ Options:
 ### AmqpConnectionManager events
 
 - `connect({connection, url})` - Emitted whenever we successfully connect to a broker.
+- `connectFailed({err, url})` - Emitted whenever we attempt to connect to a broker, but fail.
 - `disconnect({err})` - Emitted whenever we disconnect from a broker.
 - `blocked({reason})` - Emitted whenever a connection is blocked by a broker
 - `unblocked` - Emitted whenever a connection is unblocked by a broker
@@ -144,6 +145,10 @@ Returns true if the AmqpConnectionManager is connected to a broker, false otherw
 ### AmqpConnectionManager#close()
 
 Close this AmqpConnectionManager and free all associated resources.
+
+### AmqpConnectionManager#connectionAttempts
+
+This is the number of times we've tried to connect to a broker.
 
 ### ChannelWrapper events
 

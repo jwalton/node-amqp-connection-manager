@@ -19,6 +19,10 @@ export interface ConnectListener {
     (arg: { connection: Connection; url: string | amqp.Options.Connect }): void;
 }
 
+export interface ConnectFailedListener {
+    (arg: { err: Error; url: string | amqp.Options.Connect | undefined }): void;
+}
+
 export type AmpqConnectionOptions = (ConnectionOptions | TcpSocketConnectOpts) & {
     noDelay?: boolean;
     timeout?: number;
@@ -78,6 +82,7 @@ export interface IAmqpConnectionManager {
 
     addListener(event: string, listener: (...args: any[]) => void): this;
     addListener(event: 'connect', listener: ConnectListener): this;
+    addListener(event: 'connectFailed', listener: ConnectFailedListener): this;
     addListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
     addListener(event: 'unblocked', listener: () => void): this;
     addListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
@@ -87,24 +92,28 @@ export interface IAmqpConnectionManager {
 
     on(event: string, listener: (...args: any[]) => void): this;
     on(event: 'connect', listener: ConnectListener): this;
+    on(event: 'connectFailed', listener: ConnectFailedListener): this;
     on(event: 'blocked', listener: (arg: { reason: string }) => void): this;
     on(event: 'unblocked', listener: () => void): this;
     on(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
 
     once(event: string, listener: (...args: any[]) => void): this;
     once(event: 'connect', listener: ConnectListener): this;
+    once(event: 'connectFailed', listener: ConnectFailedListener): this;
     once(event: 'blocked', listener: (arg: { reason: string }) => void): this;
     once(event: 'unblocked', listener: () => void): this;
     once(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
 
     prependListener(event: string, listener: (...args: any[]) => void): this;
     prependListener(event: 'connect', listener: ConnectListener): this;
+    prependListener(event: 'connectFailed', listener: ConnectFailedListener): this;
     prependListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
     prependListener(event: 'unblocked', listener: () => void): this;
     prependListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
 
     prependOnceListener(event: string, listener: (...args: any[]) => void): this;
     prependOnceListener(event: 'connect', listener: ConnectListener): this;
+    prependOnceListener(event: 'connectFailed', listener: ConnectFailedListener): this;
     prependOnceListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
     prependOnceListener(event: 'unblocked', listener: () => void): this;
     prependOnceListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
@@ -127,6 +136,7 @@ export interface IAmqpConnectionManager {
 //
 // Events:
 // * `connect({connection, url})` - Emitted whenever we connect to a broker.
+// * `connectFailed({err, url})` - Emitted whenever we fail to connect to a broker.
 // * `disconnect({err})` - Emitted whenever we disconnect from a broker.
 // * `blocked({reason})` - Emitted whenever connection is blocked by a broker.
 // * `unblocked()` - Emitted whenever connection is unblocked by a broker.
@@ -143,18 +153,19 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         | (() => Promise<ConnectionUrl | ConnectionUrl[]>);
     private _urls?: ConnectionUrl[];
 
-    /**
-     * Keep track of whether a disconnect event has been sent or not.  The problem
-     * is that if we've never connected, and we encounter an error, we want to
-     * generate a "disconnect" event, even though we're not disconnected, otherwise
-     * the caller will never know there was an error.  So we can't just rely on
-     * this._currentConnection.
-     */
-    private _disconnectSent = false;
-
     public connectionOptions: AmpqConnectionOptions | undefined;
     public heartbeatIntervalInSeconds: number;
     public reconnectTimeInSeconds: number;
+
+    private _connectionAttempts = 0;
+
+    /**
+     * The number of connection attempts this connection manager has made,
+     * successful, failed, or in-progress..
+     */
+    get connectionAttempts(): number {
+        return this._connectionAttempts;
+    }
 
     /**
      *  Create a new AmqplibConnectionManager.
@@ -213,7 +224,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         this._connect();
 
         let reject: (reason?: any) => void;
-        const onDisconnect = ({ err }: { err: any }) => {
+        const onConnectFailed = ({ err }: { err: any }) => {
             // Ignore disconnects caused by dead servers etc., but throw on operational errors like bad credentials.
             if (err.isOperational) {
                 reject(err);
@@ -225,7 +236,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 once(this, 'connect'),
                 new Promise((_resolve, innerReject) => {
                     reject = innerReject;
-                    this.on('disconnect', onDisconnect);
+                    this.on('connectFailed', onConnectFailed);
                 }),
                 ...(timeout
                     ? [
@@ -236,7 +247,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     : []),
             ]);
         } finally {
-            this.removeListener('disconnect', onDisconnect);
+            this.removeListener('connectFailed', onConnectFailed);
         }
     }
 
@@ -302,7 +313,6 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 })
                 .then(() => {
                     this._currentConnection = undefined;
-                    this._disconnectSent = true;
                     this.emit('disconnect', { err: new Error('forced reconnect') });
                     return this._connect();
                 })
@@ -328,6 +338,10 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         if (this._closed || this.isConnected()) {
             return Promise.resolve(null);
         }
+
+        this._connectionAttempts++;
+
+        let attemptedUrl: string | amqp.Options.Connect | undefined;
 
         const result = (this._connectPromise = Promise.resolve()
             .then(() => {
@@ -372,6 +386,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                         heartbeat: url.heartbeat ?? this.heartbeatIntervalInSeconds,
                     };
                 }
+                attemptedUrl = originalUrl;
 
                 // Add the `heartbeastIntervalInSeconds` to the connection options.
                 if (typeof connect === 'string') {
@@ -400,7 +415,6 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     // Reconnect if the connection closes
                     connection.on('close', (err) => {
                         this._currentConnection = undefined;
-                        this._disconnectSent = true;
                         this.emit('disconnect', { err });
 
                         const handle = wait(this.reconnectTimeInSeconds * 1000);
@@ -413,7 +427,6 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     });
 
                     this._connectPromise = undefined;
-                    this._disconnectSent = false;
                     this.emit('connect', { connection, url: originalUrl });
 
                     // Need to return null here, or Bluebird will complain - #171.
@@ -421,10 +434,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 });
             })
             .catch((err) => {
-                if (!this._disconnectSent) {
-                    this._disconnectSent = true;
-                    this.emit('disconnect', { err });
-                }
+                this.emit('connectFailed', { err, url: attemptedUrl });
 
                 // Connection failed...
                 this._currentConnection = undefined;
