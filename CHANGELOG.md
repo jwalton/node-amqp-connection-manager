@@ -1,3 +1,21 @@
+# [4.0.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.9.0...v4.0.0) (2022-01-07)
+
+### Bug Fixes
+
+- Emit `connectFailed` on connection failure. ([0f05987](https://github.com/jwalton/node-amqp-connection-manager/commit/0f05987af16db25954fb83de4e0bed05e71121cf)), closes [#222](https://github.com/jwalton/node-amqp-connection-manager/issues/222)
+
+### Continuous Integration
+
+- Stop testing on node 10 and 12. ([5da9cb0](https://github.com/jwalton/node-amqp-connection-manager/commit/5da9cb034ec1f311677fd0db3931176ee2797dc2))
+
+### BREAKING CHANGES
+
+- No longer running unit tests on node 10 and 12, although this package may continue to work on these.
+- We will no longer emit a `disconnect` event on an
+  initial connection failure - instead we now emit `connectFailed` on each
+  connection failure, and only emit `disconnect` when we transition from
+  connected to disconnected.
+
 # [3.9.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.8.1...v3.9.0) (2022-01-04)
 
 ### Features
