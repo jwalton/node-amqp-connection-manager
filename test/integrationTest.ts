@@ -1,7 +1,7 @@
 import { Channel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import chai from 'chai';
 import chaiJest from 'chai-jest';
-import pEvent from 'p-event';
+import { once } from 'events';
 import { defer, timeout } from 'promise-tools';
 import amqp, { AmqpConnectionManagerClass as AmqpConnectionManager } from '../src';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
@@ -27,19 +27,19 @@ describe('Integration tests', () => {
     it('should connect to the broker', async () => {
         // Create a new connection manager
         connection = amqp.connect(['amqp://localhost']);
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
     });
 
     it('should connect to the broker with a username and password', async () => {
         // Create a new connection manager
         connection = amqp.connect(['amqp://guest:guest@localhost:5672']);
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
     });
 
     it('should connect to the broker with a string', async () => {
         // Create a new connection manager
         connection = amqp.connect('amqp://guest:guest@localhost:5672');
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
     });
 
     it('should connect to the broker with a amqp.Connect object', async () => {
@@ -50,7 +50,7 @@ describe('Integration tests', () => {
             port: 5672,
             vhost: '/',
         });
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
     });
 
     it('should connect to the broker with an url/options object', async () => {
@@ -58,7 +58,7 @@ describe('Integration tests', () => {
         connection = amqp.connect({
             url: 'amqp://guest:guest@localhost:5672',
         });
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
     });
 
     it('should connect to the broker with a string with options', async () => {
@@ -66,7 +66,7 @@ describe('Integration tests', () => {
         connection = amqp.connect(
             'amqp://guest:guest@localhost:5672/%2F?heartbeat=10&channelMax=100'
         );
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
     });
 
     // This test might cause jest to complain about leaked resources due to the bug described and fixed by:
@@ -124,7 +124,7 @@ describe('Integration tests', () => {
             },
         });
 
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
 
         await sendChannel.sendToQueue(queueName, content);
 
@@ -215,7 +215,7 @@ describe('Integration tests', () => {
             },
         });
 
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
         await timeout(rpcClient.waitForConnect(), 3000);
         await timeout(rpcServer.waitForConnect(), 3000);
 
@@ -281,7 +281,7 @@ describe('Integration tests', () => {
             },
         });
 
-        await timeout(pEvent(connection, 'connect'), 3000);
+        await timeout(once(connection, 'connect'), 3000);
         await timeout(rpcServer.waitForConnect(), 3000);
         await timeout(rpcClient.waitForConnect(), 3000);
 

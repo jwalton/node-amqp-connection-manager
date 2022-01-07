@@ -3,12 +3,7 @@ module.exports = {
     parserOptions: {
         project: ['./tsconfig.json', './test/tsconfig.json'],
     },
-    extends: [
-        'eslint:recommended',
-        'plugin:@typescript-eslint/recommended',
-        'prettier',
-        'plugin:import/recommended',
-    ],
+    extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
     rules: {
         '@typescript-eslint/explicit-function-return-type': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
@@ -16,9 +11,6 @@ module.exports = {
         '@typescript-eslint/no-use-before-define': 'off',
         // typescript compiler has better unused variable checking.
         '@typescript-eslint/no-unused-vars': 'off',
-        'import/no-unresolved': 'off',
-        'import/named': 'off',
-        'import/extensions': ['error', 'ignorePackages'],
     },
     overrides: [
         {
