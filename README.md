@@ -146,10 +146,6 @@ Returns true if the AmqpConnectionManager is connected to a broker, false otherw
 
 Close this AmqpConnectionManager and free all associated resources.
 
-### AmqpConnectionManager#connectionAttempts
-
-This is the number of times we've tried to connect to a broker.
-
 ### ChannelWrapper events
 
 - `connect` - emitted every time this channel connects or reconnects.

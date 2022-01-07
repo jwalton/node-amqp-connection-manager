@@ -151,10 +151,10 @@ describe('AmqpConnectionManager', function () {
                 return Promise.resolve(null);
             },
         });
+
         amqp.connect();
         const [{ err }] = await once(amqp, 'connectFailed');
         expect(err.message).to.contain('No servers found');
-        expect(amqp.connectionAttempts).to.equal(1);
         return amqp?.close();
     });
 
@@ -204,7 +204,6 @@ describe('AmqpConnectionManager', function () {
 
         const [{ connection, url }] = await once(amqp, 'connect');
         expect(connectFailedSeen).to.equal(1);
-        expect(amqp.connectionAttempts).to.equal(2);
 
         // Verify that we round-robined to the next server, since the first was unavailable.
         expect(url, 'url').to.equal('amqp://rabbit2');

@@ -157,16 +157,6 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     public heartbeatIntervalInSeconds: number;
     public reconnectTimeInSeconds: number;
 
-    private _connectionAttempts = 0;
-
-    /**
-     * The number of connection attempts this connection manager has made,
-     * successful, failed, or in-progress..
-     */
-    get connectionAttempts(): number {
-        return this._connectionAttempts;
-    }
-
     /**
      *  Create a new AmqplibConnectionManager.
      *
@@ -338,8 +328,6 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         if (this._closed || this.isConnected()) {
             return Promise.resolve(null);
         }
-
-        this._connectionAttempts++;
 
         let attemptedUrl: string | amqp.Options.Connect | undefined;
 
