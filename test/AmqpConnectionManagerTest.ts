@@ -151,8 +151,9 @@ describe('AmqpConnectionManager', function () {
                 return Promise.resolve(null);
             },
         });
+
         amqp.connect();
-        const [{ err }] = await once(amqp, 'disconnect');
+        const [{ err }] = await once(amqp, 'connectFailed');
         expect(err.message).to.contain('No servers found');
         return amqp?.close();
     });
@@ -189,22 +190,22 @@ describe('AmqpConnectionManager', function () {
     it("should reconnect to the broker if it can't connect in the first place", async () => {
         amqplib.deadServers = ['amqp://rabbit1'];
 
-        // Should try to connect to rabbit1 first and be refused, and then succesfully connect to rabbit2.
+        // Should try to connect to rabbit1 first and be refused, and then successfully connect to rabbit2.
         amqp = new AmqpConnectionManager(['amqp://rabbit1', 'amqp://rabbit2'], {
             heartbeatIntervalInSeconds: 0.01,
         });
         amqp.connect();
 
-        let disconnectEventsSeen = 0;
-        amqp.on('disconnect', function () {
-            disconnectEventsSeen++;
+        let connectFailedSeen = 0;
+        amqp.on('connectFailed', function () {
+            connectFailedSeen++;
             amqplib.failConnections = false;
         });
 
         const [{ connection, url }] = await once(amqp, 'connect');
-        expect(disconnectEventsSeen).to.equal(1);
+        expect(connectFailedSeen).to.equal(1);
 
-        // Verify that we round-robined to the next server, since the first was unavilable.
+        // Verify that we round-robined to the next server, since the first was unavailable.
         expect(url, 'url').to.equal('amqp://rabbit2');
         if (typeof url !== 'string') {
             throw new Error('url is not a string');
