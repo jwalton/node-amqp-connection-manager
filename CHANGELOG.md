@@ -1,3 +1,9 @@
+## [4.0.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.0.0...v4.0.1) (2022-01-21)
+
+### Bug Fixes
+
+- accept type of amqplib.credentials.external() ([1db3b2d](https://github.com/jwalton/node-amqp-connection-manager/commit/1db3b2d5339387124c9b7b43192b7d93db7b1702))
+
 # [4.0.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v3.9.0...v4.0.0) (2022-01-07)
 
 ### Bug Fixes
