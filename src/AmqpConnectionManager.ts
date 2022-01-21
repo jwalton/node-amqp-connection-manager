@@ -36,6 +36,10 @@ export type AmpqConnectionOptions = (ConnectionOptions | TcpSocketConnectOpts) &
               password: string;
               response: () => Buffer;
           }
+        | {
+              mechanism: string;
+              response: () => Buffer;
+          }
         | undefined;
 };
 
