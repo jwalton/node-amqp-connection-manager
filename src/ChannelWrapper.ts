@@ -1,10 +1,14 @@
 import type * as amqplib from 'amqplib';
 import { Options } from 'amqplib';
+import crypto from 'crypto';
 import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
+import { promisify } from 'util';
 import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
 
 const MAX_MESSAGES_PER_BATCH = 1000;
+
+const randomBytes = promisify(crypto.randomBytes);
 
 export type Channel = amqplib.ConfirmChannel | amqplib.Channel;
 
@@ -718,15 +722,20 @@ export default class ChannelWrapper extends EventEmitter {
         queue: string,
         onMessage: Consumer['onMessage'],
         options: ConsumerOptions = {}
-    ): Promise<void> {
+    ): Promise<amqplib.Replies.Consume> {
+        const consumerTag = options.consumerTag || (await randomBytes(16)).toString('hex');
         const consumer: Consumer = {
             consumerTag: null,
             queue,
             onMessage,
-            options,
+            options: {
+                ...options,
+                consumerTag,
+            },
         };
         this._consumers.push(consumer);
         await this._consume(consumer);
+        return { consumerTag };
     }
 
     private async _consume(consumer: Consumer): Promise<void> {
@@ -791,6 +800,19 @@ export default class ChannelWrapper extends EventEmitter {
                 return acc;
             }, [])
         );
+    }
+
+    async cancel(consumerTag: string): Promise<void> {
+        const idx = this._consumers.findIndex((x) => x.options.consumerTag === consumerTag);
+        if (idx === -1) {
+            return;
+        }
+
+        const consumer = this._consumers[idx];
+        this._consumers.splice(idx, 1);
+        if (this._channel && consumer.consumerTag) {
+            await this._channel.cancel(consumer.consumerTag);
+        }
     }
 
     /** Send an `ack` to the underlying channel. */
