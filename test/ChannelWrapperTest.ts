@@ -1217,6 +1217,71 @@ describe('ChannelWrapper', function () {
         expect(consumerTag).to.equal(2);
         expect(canceledTags).to.deep.equal(['0', '1']);
     });
+
+    it('should be able to cancel specific consumers', async function () {
+        let onQueue1: any = null;
+        let onQueue2: any = null;
+        const canceledTags: number[] = [];
+
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager, {
+            async setup(channel: amqplib.ConfirmChannel) {
+                channel.consume = jest.fn().mockImplementation((queue, onMsg, _options) => {
+                    if (queue === 'queue1') {
+                        onQueue1 = onMsg;
+                    } else {
+                        onQueue2 = onMsg;
+                    }
+                    return Promise.resolve({
+                        consumerTag: _options.consumerTag,
+                    });
+                });
+                channel.cancel = jest.fn().mockImplementation((consumerTag) => {
+                    canceledTags.push(consumerTag);
+                    if (consumerTag === '0') {
+                        onQueue1(null);
+                    } else if (consumerTag === '1') {
+                        onQueue2(null);
+                    }
+                    return Promise.resolve();
+                });
+            },
+        });
+        await channelWrapper.waitForConnect();
+
+        const queue1: any[] = [];
+        const { consumerTag: consumerTag1 } = await channelWrapper.consume(
+            'queue1',
+            (msg) => {
+                queue1.push(msg);
+            },
+            { consumerTag: '1' }
+        );
+
+        const queue2: any[] = [];
+        const { consumerTag: consumerTag2 } = await channelWrapper.consume(
+            'queue2',
+            (msg) => {
+                queue2.push(msg);
+            },
+            { consumerTag: '2' }
+        );
+
+        onQueue1(1);
+        onQueue2(1);
+
+        await channelWrapper.cancel(consumerTag1);
+        await channelWrapper.cancel(consumerTag2);
+
+        // Consumers shouldn't be resumed after reconnect when canceled
+        connectionManager.simulateDisconnect();
+        connectionManager.simulateConnect();
+        await channelWrapper.waitForConnect();
+
+        expect(queue1).to.deep.equal([1]);
+        expect(queue2).to.deep.equal([1]);
+        expect(canceledTags).to.deep.equal(['1', '2']);
+    });
 });
 
 /** Returns the arguments of the most recent call to this mock. */
