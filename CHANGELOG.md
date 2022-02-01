@@ -1,3 +1,9 @@
+# [4.1.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.0.1...v4.1.0) (2022-02-01)
+
+### Features
+
+- cancel specific consumer ([5f3b2eb](https://github.com/jwalton/node-amqp-connection-manager/commit/5f3b2eb1ab20d2fc63054192632a80d78a7934a2))
+
 ## [4.0.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.0.0...v4.0.1) (2022-01-21)
 
 ### Bug Fixes
