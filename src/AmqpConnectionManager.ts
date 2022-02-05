@@ -225,6 +225,10 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
             }
         };
 
+        let waitTimeout;
+        if (timeout) {
+            waitTimeout = wait(timeout);
+        }
         try {
             await Promise.race([
                 once(this, 'connect'),
@@ -232,15 +236,16 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                     reject = innerReject;
                     this.on('connectFailed', onConnectFailed);
                 }),
-                ...(timeout
+                ...(waitTimeout
                     ? [
-                          wait(timeout).promise.then(() => {
+                          waitTimeout.promise.then(() => {
                               throw new Error('amqp-connection-manager: connect timeout');
                           }),
                       ]
                     : []),
             ]);
         } finally {
+            waitTimeout?.cancel();
             this.removeListener('connectFailed', onConnectFailed);
         }
     }
