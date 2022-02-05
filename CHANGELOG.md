@@ -1,3 +1,9 @@
+## [4.1.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.0...v4.1.1) (2022-02-05)
+
+### Bug Fixes
+
+- process unable to exit after connect ([8d572b1](https://github.com/jwalton/node-amqp-connection-manager/commit/8d572b1899f3739bb887104dd992aff6722f137a))
+
 # [4.1.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.0.1...v4.1.0) (2022-02-01)
 
 ### Features
