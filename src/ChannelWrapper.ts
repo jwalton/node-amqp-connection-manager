@@ -64,7 +64,7 @@ interface SendToQueueMessage {
     isTimedout: boolean;
 }
 
-interface PublishOptions extends Options.Publish {
+export interface PublishOptions extends Options.Publish {
     /** Message will be rejected after timeout ms */
     timeout?: number;
 }
