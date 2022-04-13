@@ -91,6 +91,7 @@ describe('ChannelWrapper', function () {
 
         const channelWrapper = new ChannelWrapper(connectionManager, {
             setup() {
+                // eslint-disable-next-line @typescript-eslint/no-this-alias
                 whatIsThis = this;
             },
         });
