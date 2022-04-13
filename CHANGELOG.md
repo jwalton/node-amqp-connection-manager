@@ -1,3 +1,9 @@
+## [4.1.2](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.1...v4.1.2) (2022-04-13)
+
+### Bug Fixes
+
+- **types:** Export PublishOptions type. ([6d20252](https://github.com/jwalton/node-amqp-connection-manager/commit/6d2025204d3adc050f916c2c116c9ac8db36114c))
+
 ## [4.1.1](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.0...v4.1.1) (2022-02-05)
 
 ### Bug Fixes
