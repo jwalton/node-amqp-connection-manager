@@ -198,7 +198,9 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         this.connectionOptions = options.connectionOptions;
 
         this.heartbeatIntervalInSeconds =
-            options.heartbeatIntervalInSeconds || HEARTBEAT_IN_SECONDS;
+            options.heartbeatIntervalInSeconds || options.heartbeatIntervalInSeconds === 0
+                ? options.heartbeatIntervalInSeconds
+                : HEARTBEAT_IN_SECONDS;
         this.reconnectTimeInSeconds =
             options.reconnectTimeInSeconds || this.heartbeatIntervalInSeconds;
 

@@ -59,6 +59,16 @@ describe('AmqpConnectionManager', function () {
         expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
     });
 
+    it('should establish a connection to a broker disabling heartbeat', async () => {
+        amqp = new AmqpConnectionManager('amqp://localhost', {
+            heartbeatIntervalInSeconds: 0,
+        });
+        amqp.connect();
+        const [{ connection, url }] = await once(amqp, 'connect');
+        expect(url, 'url').to.equal('amqp://localhost');
+        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=0');
+    });
+
     it('should close connection to a broker', async () => {
         amqp = new AmqpConnectionManager('amqp://localhost');
         amqp.connect();
