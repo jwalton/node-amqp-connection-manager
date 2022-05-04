@@ -1,3 +1,9 @@
+## [4.1.3](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.2...v4.1.3) (2022-05-04)
+
+### Bug Fixes
+
+- accept 0 for heartbeatIntervalInSeconds ([208af68](https://github.com/jwalton/node-amqp-connection-manager/commit/208af6875bacda01b5a75be52f631bd71b4eafcd))
+
 ## [4.1.2](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.1...v4.1.2) (2022-04-13)
 
 ### Bug Fixes
