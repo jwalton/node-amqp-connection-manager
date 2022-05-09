@@ -45,7 +45,7 @@
         "eslint-config-prettier": "^8.3.0",
         "eslint-plugin-promise": "^6.0.0",
         "greenkeeper-lockfile": "^1.14.0",
-        "husky": "^7.0.1",
+        "husky": "^8.0.1",
         "istanbul": "^0.4.0",
         "jest": "^27.0.6",
         "jest-ts-webcompat-resolver": "^1.0.0",
