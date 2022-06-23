@@ -13,10 +13,10 @@ export type {
 } from './AmqpConnectionManager.js';
 export type {
     CreateChannelOpts,
-    default as ChannelWrapper,
     SetupFunc,
     Channel,
 } from './ChannelWrapper.js';
+export { default as ChannelWrapper } from './ChannelWrapper.js';
 
 import { Options as AmqpLibOptions } from 'amqplib';
 
