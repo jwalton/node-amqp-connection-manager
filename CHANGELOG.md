@@ -1,3 +1,9 @@
+## [4.1.4](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.3...v4.1.4) (2022-08-05)
+
+### Bug Fixes
+
+- import of promise breaker ([d873885](https://github.com/jwalton/node-amqp-connection-manager/commit/d87388550d85e8326f6d91b6f86819809e1401ae)), closes [#234](https://github.com/jwalton/node-amqp-connection-manager/issues/234)
+
 ## [4.1.3](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.2...v4.1.3) (2022-05-04)
 
 ### Bug Fixes
