@@ -2,7 +2,7 @@ import type * as amqplib from 'amqplib';
 import { Options } from 'amqplib';
 import crypto from 'crypto';
 import { EventEmitter } from 'events';
-import pb from 'promise-breaker';
+import * as pb from 'promise-breaker';
 import { promisify } from 'util';
 import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
 

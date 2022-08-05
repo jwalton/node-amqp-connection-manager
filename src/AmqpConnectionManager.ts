@@ -1,7 +1,7 @@
 import amqp, { Connection } from 'amqplib';
 import { EventEmitter, once } from 'events';
 import { TcpSocketConnectOpts } from 'net';
-import pb from 'promise-breaker';
+import * as pb from 'promise-breaker';
 import { ConnectionOptions } from 'tls';
 import { URL } from 'url';
 import ChannelWrapper, { CreateChannelOpts } from './ChannelWrapper.js';
