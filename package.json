@@ -16,7 +16,7 @@
         "dist/**/*"
     ],
     "dependencies": {
-        "promise-breaker": "^5.0.0"
+        "promise-breaker": "^6.0.0"
     },
     "peerDependencies": {
         "amqplib": "*"

@@ -1,4 +1,4 @@
-import amqp, { Connection } from 'amqplib';
+import * as amqp from 'amqplib';
 import { EventEmitter, once } from 'events';
 import { TcpSocketConnectOpts } from 'net';
 import pb from 'promise-breaker';
@@ -16,7 +16,7 @@ export type ConnectionUrl =
     | { url: string; connectionOptions?: AmpqConnectionOptions };
 
 export interface ConnectListener {
-    (arg: { connection: Connection; url: string | amqp.Options.Connect }): void;
+    (arg: { connection: amqp.Connection; url: string | amqp.Options.Connect }): void;
 }
 
 export interface ConnectFailedListener {
@@ -131,7 +131,7 @@ export interface IAmqpConnectionManager {
     isConnected(): boolean;
 
     /** The current connection. */
-    readonly connection: Connection | undefined;
+    readonly connection: amqp.Connection | undefined;
 
     /** Returns the number of registered channels. */
     readonly channelCount: number;
@@ -151,7 +151,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     private _closed = false;
     private _cancelRetriesHandler?: () => void;
     private _connectPromise?: Promise<null>;
-    private _currentConnection?: Connection;
+    private _currentConnection?: amqp.Connection;
     private _findServers:
         | ((callback: (urls: ConnectionUrl | ConnectionUrl[]) => void) => void)
         | (() => Promise<ConnectionUrl | ConnectionUrl[]>);
@@ -322,7 +322,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     }
 
     /** The current connection. */
-    get connection(): Connection | undefined {
+    get connection(): amqp.Connection | undefined {
         return this._currentConnection;
     }
 
