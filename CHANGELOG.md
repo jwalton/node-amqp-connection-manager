@@ -1,3 +1,9 @@
+## [4.1.6](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.5...v4.1.6) (2022-08-11)
+
+### Bug Fixes
+
+- Upgrade promise-breaker to 6.0.0 to fix typescript imports. ([c9aff08](https://github.com/jwalton/node-amqp-connection-manager/commit/c9aff0893336dab3e440825f56c3e94aa39d9ecc)), closes [#234](https://github.com/jwalton/node-amqp-connection-manager/issues/234)
+
 ## [4.1.5](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.4...v4.1.5) (2022-08-09)
 
 ### Reverts
