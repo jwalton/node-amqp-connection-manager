@@ -1,4 +1,4 @@
-import origAmpq from 'amqplib';
+import origAmqp from 'amqplib';
 import chai from 'chai';
 import chaiString from 'chai-string';
 import { once } from 'events';
@@ -15,7 +15,7 @@ describe('AmqpConnectionManager', function () {
     let amqp: AmqpConnectionManager | undefined;
 
     beforeEach(() => {
-        jest.spyOn(origAmpq, 'connect').mockImplementation(((url: string) =>
+        jest.spyOn(origAmqp, 'connect').mockImplementation(((url: string) =>
             amqplib.connect(url)) as any);
         amqplib.reset();
     });
@@ -169,7 +169,7 @@ describe('AmqpConnectionManager', function () {
     });
 
     it('should timeout connect', async () => {
-        jest.spyOn(origAmpq, 'connect').mockImplementation((): any => {
+        jest.spyOn(origAmqp, 'connect').mockImplementation((): any => {
             return promiseTools.delay(200);
         });
         amqp = new AmqpConnectionManager('amqp://localhost');
