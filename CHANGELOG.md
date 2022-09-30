@@ -1,3 +1,9 @@
+## [4.1.7](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.6...v4.1.7) (2022-09-30)
+
+### Bug Fixes
+
+- consumer registered twice during setup ([1ca216a](https://github.com/jwalton/node-amqp-connection-manager/commit/1ca216a47c2abdbb1f4a1e04b9032cb03db17aa2)), closes [#297](https://github.com/jwalton/node-amqp-connection-manager/issues/297)
+
 ## [4.1.6](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.5...v4.1.6) (2022-08-11)
 
 ### Bug Fixes
