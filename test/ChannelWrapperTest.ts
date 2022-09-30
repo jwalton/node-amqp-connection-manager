@@ -1283,6 +1283,20 @@ describe('ChannelWrapper', function () {
         expect(queue2).to.deep.equal([1]);
         expect(canceledTags).to.deep.equal(['1', '2']);
     });
+
+    it('should not register same consumer twice', async function () {
+        const setup = jest.fn().mockImplementation(() => promiseTools.delay(10));
+
+        const channelWrapper = new ChannelWrapper(connectionManager, { setup });
+        connectionManager.simulateConnect();
+
+        await channelWrapper.consume('queue', () => {});
+
+        await channelWrapper.waitForConnect();
+
+        const channel = getUnderlyingChannel(channelWrapper);
+        expect(channel.consume).to.have.beenCalledTimes(1);
+    });
 });
 
 /** Returns the arguments of the most recent call to this mock. */

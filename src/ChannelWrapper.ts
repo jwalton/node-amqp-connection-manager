@@ -733,6 +733,11 @@ export default class ChannelWrapper extends EventEmitter {
                 consumerTag,
             },
         };
+
+        if (this._settingUp) {
+            await this._settingUp;
+        }
+
         this._consumers.push(consumer);
         await this._consume(consumer);
         return { consumerTag };
