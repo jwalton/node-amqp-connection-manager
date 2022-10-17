@@ -480,6 +480,11 @@ describe('ChannelWrapper', function () {
         expect(setup).to.have.not.beenCalled;
     });
 
+    it('should fail silently when removing a setup that was not added', async () => {
+        const channelWrapper = new ChannelWrapper(connectionManager);
+        await channelWrapper.removeSetup(() => undefined);
+    });
+
     it('should run teardown when removing a setup if we are connected', async function () {
         const setup = jest.fn().mockImplementation(() => Promise.resolve());
         const teardown = jest.fn().mockImplementation(() => Promise.resolve());
