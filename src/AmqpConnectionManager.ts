@@ -220,9 +220,9 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         this._connect();
 
         let reject: (reason?: any) => void;
-        const onConnectFailed = ({ err }: { err: any }) => {
-            // Ignore disconnects caused by dead servers etc., but throw on operational errors like bad credentials.
-            if (err.isOperational) {
+        const onConnectFailed = ({ err }: { err: Error }) => {
+            // Ignore disconnects caused bad credentials.
+            if (err.message.includes('ACCESS-REFUSED') || err.message.includes('403')) {
                 reject(err);
             }
         };
