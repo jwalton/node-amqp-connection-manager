@@ -759,7 +759,7 @@ export default class ChannelWrapper extends EventEmitter {
                 if (!msg) {
                     consumer.consumerTag = null;
                     this._reconnectConsumer(consumer).catch((err) => {
-                        if (err.isOperational && err.message.includes('BasicConsume; 404')) {
+                        if (err.code === 404) {
                             // Ignore errors caused by queue not declared. In
                             // those cases the connection will reconnect and
                             // then consumers reestablished. The full reconnect
@@ -767,7 +767,7 @@ export default class ChannelWrapper extends EventEmitter {
                             // before starting to consume.
                             return;
                         }
-                        throw err;
+                        this.emit('error', err);
                     });
                     return;
                 }

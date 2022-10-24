@@ -298,4 +298,33 @@ describe('Integration tests', () => {
         await rpcClient.close();
         await rpcServer.close();
     });
+
+    it('should reconnect consumer after queue deletion', async function () {
+        const queueName = 'testQueue';
+
+        connection = new AmqpConnectionManager('amqp://localhost', { reconnectTimeInSeconds: 0.5 });
+        const channelWrapper = connection.createChannel({
+            confirm: true,
+            setup: async (channel: Channel) => {
+                await channel.assertQueue(queueName, { durable: false, autoDelete: true });
+            },
+        });
+
+        const result = defer<string>();
+        await channelWrapper.consume(queueName, (msg) => {
+            result.resolve(msg.content.toString());
+        });
+
+        await Promise.all([connection.connect(), once(channelWrapper, 'connect')]);
+
+        // The deleted queue should cause a reconnect
+        await channelWrapper.deleteQueue(queueName);
+
+        // Await all setup functions to run before sending a message
+        await once(channelWrapper, 'connect');
+        await channelWrapper.sendToQueue(queueName, 'hello');
+
+        const content = await result.promise;
+        expect(content).to.equal('hello');
+    });
 });
