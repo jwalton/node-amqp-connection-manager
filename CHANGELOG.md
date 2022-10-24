@@ -1,3 +1,9 @@
+## [4.1.8](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.7...v4.1.8) (2022-10-24)
+
+### Bug Fixes
+
+- error thrown when queue deleted in amqplib 0.10.0 ([60700ee](https://github.com/jwalton/node-amqp-connection-manager/commit/60700eebcac6f1ce985a34da59f216481473780a)), closes [#301](https://github.com/jwalton/node-amqp-connection-manager/issues/301)
+
 ## [4.1.7](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.6...v4.1.7) (2022-09-30)
 
 ### Bug Fixes
