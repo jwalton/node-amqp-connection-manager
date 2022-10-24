@@ -1,3 +1,9 @@
+## [4.1.9](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.8...v4.1.9) (2022-10-24)
+
+### Bug Fixes
+
+- Fail immediately for a bad password on latest amqplib. ([412ed92](https://github.com/jwalton/node-amqp-connection-manager/commit/412ed921be20494e87f5f6b5c9a65ad2f207d304))
+
 ## [4.1.8](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.7...v4.1.8) (2022-10-24)
 
 ### Bug Fixes
