@@ -13,7 +13,7 @@ const HEARTBEAT_IN_SECONDS = 5;
 export type ConnectionUrl =
     | string
     | amqp.Options.Connect
-    | { url: string; connectionOptions?: AmpqConnectionOptions };
+    | { url: string; connectionOptions?: AmqpConnectionOptions };
 
 export interface ConnectListener {
     (arg: { connection: amqp.Connection; url: string | amqp.Options.Connect }): void;
@@ -23,7 +23,7 @@ export interface ConnectFailedListener {
     (arg: { err: Error; url: string | amqp.Options.Connect | undefined }): void;
 }
 
-export type AmpqConnectionOptions = (ConnectionOptions | TcpSocketConnectOpts) & {
+export type AmqpConnectionOptions = (ConnectionOptions | TcpSocketConnectOpts) & {
     noDelay?: boolean;
     timeout?: number;
     keepAlive?: boolean;
@@ -66,7 +66,7 @@ export interface AmqpConnectionManagerOptions {
         | undefined;
 
     /** Connection options, passed as options to the amqplib.connect() method. */
-    connectionOptions?: AmpqConnectionOptions;
+    connectionOptions?: AmqpConnectionOptions;
 }
 
 /* istanbul ignore next */
@@ -80,7 +80,7 @@ function neverThrows() {
 }
 
 export interface IAmqpConnectionManager {
-    connectionOptions?: AmpqConnectionOptions;
+    connectionOptions?: AmqpConnectionOptions;
     heartbeatIntervalInSeconds: number;
     reconnectTimeInSeconds: number;
 
@@ -157,7 +157,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         | (() => Promise<ConnectionUrl | ConnectionUrl[]>);
     private _urls?: ConnectionUrl[];
 
-    public connectionOptions: AmpqConnectionOptions | undefined;
+    public connectionOptions: AmqpConnectionOptions | undefined;
     public heartbeatIntervalInSeconds: number;
     public reconnectTimeInSeconds: number;
 
