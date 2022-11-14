@@ -25,7 +25,7 @@
         "@jwalton/semantic-release-config": "^1.0.0",
         "@semantic-release/changelog": "^6.0.1",
         "@semantic-release/git": "^10.0.1",
-        "@types/amqplib": "^0.8.2",
+        "@types/amqplib": "^0.10.0",
         "@types/chai": "^4.2.21",
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai-string": "^1.4.2",
