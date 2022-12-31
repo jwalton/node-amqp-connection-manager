@@ -4,19 +4,15 @@ import AmqpConnectionManager, {
     ConnectionUrl,
     IAmqpConnectionManager,
 } from './AmqpConnectionManager.js';
-import { PublishOptions } from './ChannelWrapper.js';
+import CW, { PublishOptions } from './ChannelWrapper.js';
 
 export type {
     AmqpConnectionManagerOptions,
     ConnectionUrl,
     IAmqpConnectionManager as AmqpConnectionManager,
 } from './AmqpConnectionManager.js';
-export type {
-    CreateChannelOpts,
-    default as ChannelWrapper,
-    SetupFunc,
-    Channel,
-} from './ChannelWrapper.js';
+export type { CreateChannelOpts, SetupFunc, Channel } from './ChannelWrapper.js';
+export type ChannelWrapper = CW;
 
 import { Options as AmqpLibOptions } from 'amqplib';
 
