@@ -1,3 +1,9 @@
+## [4.1.10](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.9...v4.1.10) (2022-12-31)
+
+### Bug Fixes
+
+- exporting ChannelWrapper as a type without it getting emitted as metadata ([a6f7b5c](https://github.com/jwalton/node-amqp-connection-manager/commit/a6f7b5c7332b41229f90717f5c4650a04fe1dbba))
+
 ## [4.1.9](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.8...v4.1.9) (2022-10-24)
 
 ### Bug Fixes
