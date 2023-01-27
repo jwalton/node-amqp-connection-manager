@@ -69,11 +69,11 @@ export interface PublishOptions extends Options.Publish {
     timeout?: number;
 }
 
-interface ConsumerOptions extends amqplib.Options.Consume {
+export interface ConsumerOptions extends amqplib.Options.Consume {
     prefetch?: number;
 }
 
-interface Consumer {
+export interface Consumer {
     consumerTag: string | null;
     queue: string;
     onMessage: (msg: amqplib.ConsumeMessage) => void;
