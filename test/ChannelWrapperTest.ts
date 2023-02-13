@@ -585,6 +585,32 @@ describe('ChannelWrapper', function () {
             channelWrapper.checkExchange('fish');
             expect(channel.checkExchange).to.have.beenCalledTimes(1);
             expect(channel.checkExchange).to.have.beenCalledWith('fish');
+            
+        });
+    });
+
+    it('should proxy assertQueue, assertExchange, bindQueue and unbindQueue to the underlying channel', function () {
+        connectionManager.simulateConnect();
+        const channelWrapper = new ChannelWrapper(connectionManager);
+        return channelWrapper.waitForConnect().then(function () {
+            // get the underlying channel
+            const channel = getUnderlyingChannel(channelWrapper);
+
+            channelWrapper.assertQueue('dog');
+            expect(channel.assertQueue).to.have.beenCalledTimes(1);
+            expect(channel.assertQueue).to.have.beenCalledWith('dog', undefined);
+
+            channelWrapper.assertExchange('bone', 'topic');
+            expect(channel.assertExchange).to.have.beenCalledTimes(1);
+            expect(channel.assertExchange).to.have.beenCalledWith('bone', 'topic', undefined);
+
+            channelWrapper.bindQueue('dog', 'bone', 'legs');
+            expect(channel.bindQueue).to.have.beenCalledTimes(1);
+            expect(channel.bindQueue).to.have.beenCalledWith('dog', 'bone', 'legs', undefined);
+            
+            channelWrapper.unbindQueue('dog', 'bone', 'legs');
+            expect(channel.unbindQueue).to.have.beenCalledTimes(1);
+            expect(channel.unbindQueue).to.have.beenCalledWith('dog', 'bone', 'legs', undefined);
         });
     });
 

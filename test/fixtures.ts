@@ -131,6 +131,17 @@ export class FakeChannel extends EventEmitter {
             return {};
         });
 
+    unbindQueue = jest
+        .fn()
+        .mockImplementation(async function (
+            _queue: string,
+            _source: string,
+            _pattern: string,
+            _args?: any
+        ): Promise<Replies.Empty> {
+            return {};
+        });
+
     assertExchange = jest
         .fn()
         .mockImplementation(async function (
