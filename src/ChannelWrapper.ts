@@ -882,7 +882,7 @@ export default class ChannelWrapper extends EventEmitter {
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async unbindQueue(queue: string, source: string, pattern: string, args?: any): Promise<void> {
         if (this._channel) {
-            return await this._channel.unbindQueue(queue, source, pattern, args);
+            await this._channel.unbindQueue(queue, source, pattern, args);
         }
     }
 
