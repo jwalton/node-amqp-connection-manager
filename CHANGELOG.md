@@ -1,3 +1,9 @@
+## [4.1.11](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.10...v4.1.11) (2023-02-24)
+
+### Bug Fixes
+
+- Add unbindQueue to ChannelWrapper. ([55ce8d3](https://github.com/jwalton/node-amqp-connection-manager/commit/55ce8d37d64fc946e95f238ea3ee3e034e6dd456))
+
 ## [4.1.10](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.9...v4.1.10) (2022-12-31)
 
 ### Bug Fixes
