@@ -878,6 +878,14 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
+    /** Send a `unbindQueue` to the underlying channel. */
+    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+    async unbindQueue(queue: string, source: string, pattern: string, args?: any): Promise<void> {
+        if (this._channel) {
+            await this._channel.unbindQueue(queue, source, pattern, args);
+        }
+    }
+
     /** Send a `deleteQueue` to the underlying channel. */
     async deleteQueue(
         queue: string,
