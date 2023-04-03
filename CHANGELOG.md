@@ -1,3 +1,9 @@
+## [4.1.12](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.11...v4.1.12) (2023-04-03)
+
+### Bug Fixes
+
+- **types:** Export types for ESM. ([7d3755a](https://github.com/jwalton/node-amqp-connection-manager/commit/7d3755a0a9bdef6a55ee2bd61d450071727beb52)), closes [#329](https://github.com/jwalton/node-amqp-connection-manager/issues/329)
+
 ## [4.1.11](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.10...v4.1.11) (2023-02-24)
 
 ### Bug Fixes
