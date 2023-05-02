@@ -1,3 +1,9 @@
+## [4.1.13](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.12...v4.1.13) (2023-05-02)
+
+### Bug Fixes
+
+- **types:** move `types` condition to the front ([a1eb206](https://github.com/jwalton/node-amqp-connection-manager/commit/a1eb206a86aff49164c766575ddb7717c0847c44))
+
 ## [4.1.12](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.11...v4.1.12) (2023-04-03)
 
 ### Bug Fixes
