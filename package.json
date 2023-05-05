@@ -31,7 +31,7 @@
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai-string": "^1.4.2",
         "@types/jest": "^29.2.0",
-        "@types/node": "^18.7.23",
+        "@types/node": "^20.0.0",
         "@types/whatwg-url": "^11.0.0",
         "@typescript-eslint/eslint-plugin": "^5.9.0",
         "@typescript-eslint/parser": "^5.9.0",
