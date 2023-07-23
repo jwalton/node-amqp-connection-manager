@@ -66,7 +66,7 @@
     "scripts": {
         "prepare": "husky install && npm run build",
         "prepublishOnly": "npm run build",
-        "build": "tsc && tsc -p tsconfig.cjs.json && ./bin/build-types.sh",
+        "build": "tsc && tsc -p tsconfig.cjs.json && tsc -p tsconfig.types.json && ./bin/build-types.sh",
         "clean": "rm -rf dist types coverage",
         "test": "npm run test:lint && npm run test:unittest",
         "test:unittest": "tsc -p test && jest --coverage",
