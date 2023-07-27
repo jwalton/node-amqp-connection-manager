@@ -1,3 +1,10 @@
+## [4.1.14](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.13...v4.1.14) (2023-07-27)
+
+### Bug Fixes
+
+- added type build step ([0cc9859](https://github.com/jwalton/node-amqp-connection-manager/commit/0cc9859c47bd54f1d449568f665426755064cba4))
+- export types in separate directory ([5d6cdbf](https://github.com/jwalton/node-amqp-connection-manager/commit/5d6cdbfc9340c2b8a2b93d40277656ccaa937cae))
+
 ## [4.1.13](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.12...v4.1.13) (2023-05-02)
 
 ### Bug Fixes
