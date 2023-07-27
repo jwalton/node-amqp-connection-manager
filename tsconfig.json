@@ -6,7 +6,7 @@
         "lib": ["es2018"],
         "allowJs": false,
         // "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
-        "declaration": true,
+        "declaration": false,
         "sourceMap": true,
         "outDir": "./dist/esm",
         "stripInternal": true,
