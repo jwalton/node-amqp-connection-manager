@@ -840,6 +840,11 @@ export default class ChannelWrapper extends EventEmitter {
         this._channel && this._channel.nackAll(requeue);
     }
 
+    /** Send a `reject` to the underlying channel. */
+    reject(message: amqplib.Message, requeue?: boolean): void {
+        this._channel && this._channel.reject(message, requeue);
+    }
+
     /** Send a `purgeQueue` to the underlying channel. */
     async purgeQueue(queue: string): Promise<amqplib.Replies.PurgeQueue> {
         if (this._channel) {
