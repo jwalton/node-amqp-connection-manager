@@ -43,7 +43,7 @@
         "coveralls": "^3.1.0",
         "cross-env": "^7.0.2",
         "eslint": "^8.6.0",
-        "eslint-config-prettier": "^8.3.0",
+        "eslint-config-prettier": "^9.0.0",
         "eslint-plugin-promise": "^6.0.0",
         "greenkeeper-lockfile": "^1.14.0",
         "husky": "^8.0.1",
