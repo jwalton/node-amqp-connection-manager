@@ -33,7 +33,7 @@
         "@types/jest": "^29.2.0",
         "@types/node": "^20.0.0",
         "@types/whatwg-url": "^11.0.0",
-        "@typescript-eslint/eslint-plugin": "^5.9.0",
+        "@typescript-eslint/eslint-plugin": "^6.7.2",
         "@typescript-eslint/parser": "^5.9.0",
         "amqplib": "^0.10.3",
         "chai": "^4.1.2",
