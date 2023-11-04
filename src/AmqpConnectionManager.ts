@@ -127,6 +127,7 @@ export interface IAmqpConnectionManager {
     connect(options?: { timeout?: number }): Promise<void>;
     reconnect(): void;
     createChannel(options?: CreateChannelOpts): ChannelWrapper;
+    findChannel(name: string): ChannelWrapper | undefined;
     close(): Promise<void>;
     isConnected(): boolean;
 
@@ -260,6 +261,10 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
             this._channels = this._channels.filter((c) => c !== channel);
         });
         return channel;
+    }
+
+    findChannel(name: string): ChannelWrapper | undefined {
+        return this._channels.find((obj) => obj.name === name) || undefined;
     }
 
     close(): Promise<void> {
