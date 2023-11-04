@@ -298,6 +298,19 @@ describe('AmqpConnectionManager', function () {
         expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal(0);
     });
 
+    it('should create and be able to find channel', async function () {
+        amqp = new AmqpConnectionManager('amqp://localhost');
+        await amqp.connect();
+        const channel = amqp.createChannel({ name: 'test-chan' });
+        const findChannel = amqp.findChannel('test-chan');
+        // Channel should register with connection manager
+        expect(amqp.channelCount, 'registered channels').to.equal(1);
+        expect(channel, 'same channe').to.equal(findChannel);
+
+        // Closing the channel should remove all listeners and de-register the channel
+        await channel.close();
+    });
+
     it('should clean up channels on close', async function () {
         amqp = new AmqpConnectionManager('amqp://localhost');
         await amqp.connect();

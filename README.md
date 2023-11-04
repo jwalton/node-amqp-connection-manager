@@ -126,7 +126,7 @@ depending on whether or not we are currently connected.)
 
 Options:
 
-- `options.name` - Name for this channel. Used for debugging.
+- `options.name` - Name for this channel. Used as the index of a channel or for debugging purposes.
 - `options.setup(channel, [cb])` - A function to call whenever we reconnect to the
   broker (and therefore create a new underlying channel.) This function should
   either accept a callback, or return a Promise. See `addSetup` below.
@@ -137,6 +137,29 @@ Options:
   are plain JSON objects. These will be encoded automatically before being sent.
 - `options.confirm` - if true (default), the created channel will be a ConfirmChannel
 - `options.publishTimeout` - a default timeout for messages published to this channel.
+
+### AmqpConnectionManager#findChannel(name)
+
+Finds the channel that has already been created.
+If the channel does not exist, we will return 'undefined'.
+It turns an instance of ChannelWrapper object.
+
+The `name` property has to be included during creation of the channel so it can be found.:
+
+```js
+var QUEUE_NAME = 'amqp-connection-manager-find-channel';
+
+connection.createChannel({
+  name: QUEUE_NAME,
+  json: true,
+  setup: function (channel) {
+    // `channel` here is a regular amqplib `ConfirmChannel`.
+    return channel.assertQueue(QUEUE_NAME, { durable: true });
+  },
+});
+
+var channelWrapper = connection.findChannel(QUEUE_NAME);
+```
 
 ### AmqpConnectionManager#isConnected()
 
