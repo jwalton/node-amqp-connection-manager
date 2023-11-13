@@ -23,63 +23,89 @@ describe('ChannelWrapper', function () {
         connectionManager = new fixtures.FakeAmqpConnectionManager() as any;
     });
 
-    it('should run all setup functions on connect', async function () {
-        const setup1 = jest.fn().mockImplementation(() => promiseTools.delay(10));
-        const setup2 = jest.fn().mockImplementation(() => promiseTools.delay(10));
+    describe('setup functions', function () {
 
-        const channelWrapper = new ChannelWrapper(connectionManager, { setup: setup1 });
+        it('... on connect', async function () {
+            const setup1 = jest.fn().mockImplementation(() => promiseTools.delay(10));
+            const setup2 = jest.fn().mockImplementation(() => promiseTools.delay(10));
 
-        await channelWrapper.addSetup(setup2);
+            const channelWrapper = new ChannelWrapper(connectionManager, { setup: setup1 });
 
-        expect(setup1).to.have.beenCalledTimes(0);
-        expect(setup2).to.have.beenCalledTimes(0);
+            await channelWrapper.addSetup(setup2);
 
-        connectionManager.simulateConnect();
+            expect(setup1).to.have.beenCalledTimes(0);
+            expect(setup2).to.have.beenCalledTimes(0);
 
-        await channelWrapper.waitForConnect();
+            connectionManager.simulateConnect();
 
-        expect(setup1).to.have.beenCalledTimes(1);
-        expect(setup2).to.have.beenCalledTimes(1);
-    });
+            await channelWrapper.waitForConnect();
 
-    it.skip('should run all setup functions on reconnect', async function () {
-        const setup1 = jest.fn().mockImplementation(() => Promise.resolve());
-        const setup2 = jest.fn().mockImplementation(() => Promise.resolve());
-
-        const channelWrapper = new ChannelWrapper(connectionManager, { setup: setup1 });
-        await channelWrapper.addSetup(setup2);
-
-        connectionManager.simulateConnect();
-        await channelWrapper.waitForConnect();
-
-        expect(setup1).to.have.beenCalledTimes(1);
-        expect(setup2).to.have.beenCalledTimes(1);
-
-        connectionManager.simulateDisconnect();
-        connectionManager.simulateConnect();
-        await channelWrapper.waitForConnect();
-
-        expect(setup1).to.have.beenCalledTimes(2);
-        expect(setup2).to.have.beenCalledTimes(2);
-    });
-
-    it.skip('should set `this` correctly in a setup function', async function () {
-        let whatIsThis;
-
-        const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup() {
-                // eslint-disable-next-line @typescript-eslint/no-this-alias
-                whatIsThis = this;
-            },
+            expect(setup1).to.have.beenCalledTimes(1);
+            expect(setup2).to.have.beenCalledTimes(1);
         });
 
-        connectionManager.simulateConnect();
-        await channelWrapper.waitForConnect();
+        it('... on reconnect', async function () {
+            const setup1 = jest.fn().mockImplementation(() => Promise.resolve());
+            const setup2 = jest.fn().mockImplementation(() => Promise.resolve());
 
-        expect(whatIsThis).to.equal(channelWrapper);
-    });
+            const channelWrapper = new ChannelWrapper(connectionManager, { setup: setup1 });
+            await channelWrapper.addSetup(setup2);
 
-    it.skip('should emit an error if a setup function throws', async function () {
+            connectionManager.simulateConnect();
+            await channelWrapper.waitForConnect();
+
+            expect(setup1).to.have.beenCalledTimes(1);
+            expect(setup2).to.have.beenCalledTimes(1);
+
+            connectionManager.simulateDisconnect();
+            connectionManager.simulateConnect();
+            await channelWrapper.waitForConnect();
+
+            expect(setup1).to.have.beenCalledTimes(2);
+            expect(setup2).to.have.beenCalledTimes(2);
+        });
+
+        it('... set `this` correctly in a setup function', async function () {
+            let whatIsThis;
+
+            const channelWrapper = new ChannelWrapper(connectionManager, {
+                setup() {
+                    // eslint-disable-next-line @typescript-eslint/no-this-alias
+                    whatIsThis = this;
+                },
+            });
+
+            connectionManager.simulateConnect();
+            await channelWrapper.waitForConnect();
+
+            expect(whatIsThis).to.equal(channelWrapper);
+        });
+
+        it('... run immediately if already connected', async function () {
+            const setup1 = jest.fn().mockImplementation(() => promiseTools.delay(10));
+            const setup2 = jest.fn().mockImplementation(() => promiseTools.delay(10));
+
+            connectionManager.simulateConnect();
+
+            const channelWrapper = new ChannelWrapper(connectionManager, {
+                setup: setup1,
+            });
+
+            await channelWrapper.waitForConnect();
+            // Initial setup will be run in background - wait for connect event.
+            expect(setup1).to.have.beenCalledTimes(1);
+
+            await channelWrapper.addSetup(setup2);
+
+            // Any setups we add after this should get run right away, though.
+            expect(setup2).to.have.beenCalledTimes(1);
+        });
+
+    })
+
+
+
+    it('should emit an error if a setup function throws', async function () {
         const setup1 = jest.fn().mockImplementation(() => Promise.resolve());
         const setup2 = jest.fn().mockImplementation(() => Promise.reject(new Error('Boom!')));
         const errors = [];
@@ -104,7 +130,7 @@ describe('ChannelWrapper', function () {
         expect(errors.length).to.equal(1);
     });
 
-    it.skip('should not emit an error if a setup function throws because the channel is closed', async function () {
+    it('should not emit an error if a setup function throws because the channel is closed', async function () {
         const setup1 = jest
             .fn()
             .mockImplementation((channel) => Promise.resolve().then(() => channel.close()));
@@ -132,33 +158,15 @@ describe('ChannelWrapper', function () {
         expect(errors.length).to.equal(0);
     });
 
-    it.skip('should return immediately from waitForConnect if we are already connected', function () {
+    it('should return immediately from waitForConnect if we are already connected', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(() => channelWrapper.waitForConnect());
     });
 
-    it.skip('should run setup functions immediately if already connected', async function () {
-        const setup1 = jest.fn().mockImplementation(() => promiseTools.delay(10));
-        const setup2 = jest.fn().mockImplementation(() => promiseTools.delay(10));
 
-        connectionManager.simulateConnect();
 
-        const channelWrapper = new ChannelWrapper(connectionManager, {
-            setup: setup1,
-        });
-
-        await channelWrapper.waitForConnect();
-        // Initial setup will be run in background - wait for connect event.
-        expect(setup1).to.have.beenCalledTimes(1);
-
-        await channelWrapper.addSetup(setup2);
-
-        // Any setups we add after this should get run right away, though.
-        expect(setup2).to.have.beenCalledTimes(1);
-    });
-
-    it.skip('should emit errors if setup functions fail to run at connect time', async function () {
+    it('should emit errors if setup functions fail to run at connect time', async function () {
         const setup = () => Promise.reject(new Error('Bad setup!'));
         const setup2 = () => Promise.reject(new Error('Bad setup2!'));
         const errorHandler = jest.fn().mockImplementation(function (_err: Error) {});
@@ -179,7 +187,7 @@ describe('ChannelWrapper', function () {
         expect(errorHandler, 'no second error event').to.have.beenCalledTimes(1);
     });
 
-    it.skip('should emit an error if amqplib refuses to create a channel for us', async function () {
+    it('should emit an error if amqplib refuses to create a channel for us', async function () {
         const errorHandler = jest.fn().mockImplementation(function (_err: Error) {});
 
         const channelWrapper = new ChannelWrapper(connectionManager);
@@ -197,7 +205,7 @@ describe('ChannelWrapper', function () {
         expect(lastArgs(errorHandler)?.[0]?.message).to.equal('No channel for you!');
     });
 
-    it.skip('should create plain channel', async function () {
+    it('should create plain channel', async function () {
         const setup = jest.fn().mockImplementation(() => promiseTools.delay(10));
 
         connectionManager.simulateConnect();
@@ -210,14 +218,14 @@ describe('ChannelWrapper', function () {
         expect(setup).to.have.beenCalledTimes(1);
     });
 
-    it.skip('should work if there are no setup functions', async function () {
+    it('should work if there are no setup functions', async function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         await channelWrapper.waitForConnect();
         // Yay!  We didn't blow up!
     });
 
-    it.skip('should publish messages to the underlying channel', function () {
+    it('should publish messages to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper
@@ -259,7 +267,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it.skip('should publish messages to the underlying channel with callbacks', function (done) {
+    it('should publish messages to the underlying channel with callbacks', function (done) {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.waitForConnect(function (err) {
@@ -299,7 +307,7 @@ describe('ChannelWrapper', function () {
         });
     });
 
-    it.skip('should sendToQueue messages to the underlying channel', function () {
+    it('should sendToQueue messages to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper
@@ -320,7 +328,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it.skip('should queue messages for the underlying channel when disconnected', function () {
+    it('should queue messages for the underlying channel when disconnected', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
             messageId: 'foo',
@@ -346,7 +354,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it.skip('should queue messages for the underlying channel if channel closes while we are trying to send', async function () {
+    it('should queue messages for the underlying channel if channel closes while we are trying to send', async function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
         connectionManager.simulateConnect();
@@ -385,7 +393,7 @@ describe('ChannelWrapper', function () {
         ).to.equal(0);
     });
 
-    it.skip('should timeout published message', async function () {
+    it('should timeout published message', async function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
         const startTime = Date.now();
@@ -399,7 +407,7 @@ describe('ChannelWrapper', function () {
         expect(duration).to.be.approximately(100, 10);
     });
 
-    it.skip('should use default timeout for published messages', async function () {
+    it('should use default timeout for published messages', async function () {
         const channelWrapper = new ChannelWrapper(connectionManager, { publishTimeout: 100 });
 
         const startTime = Date.now();
@@ -411,7 +419,7 @@ describe('ChannelWrapper', function () {
         expect(duration).to.be.approximately(100, 10);
     });
 
-    it.skip('should run all setup messages prior to sending any queued messages', function () {
+    it('should run all setup messages prior to sending any queued messages', function () {
         const order: string[] = [];
 
         const setup: SetupFunc = function (channel: amqplib.ConfirmChannel) {
@@ -444,7 +452,7 @@ describe('ChannelWrapper', function () {
             .then(() => expect(order).to.eql(['setup', 'publish', 'sendToQueue']));
     });
 
-    it.skip('should remove setup messages', async () => {
+    it('should remove setup messages', async () => {
         const setup = jest.fn().mockImplementation(() => Promise.resolve());
 
         const channelWrapper = new ChannelWrapper(connectionManager);
@@ -457,12 +465,12 @@ describe('ChannelWrapper', function () {
         expect(setup).to.have.not.beenCalled;
     });
 
-    it.skip('should fail silently when removing a setup that was not added', async () => {
+    it('should fail silently when removing a setup that was not added', async () => {
         const channelWrapper = new ChannelWrapper(connectionManager);
         await channelWrapper.removeSetup(() => undefined);
     });
 
-    it.skip('should run teardown when removing a setup if we are connected', async function () {
+    it('should run teardown when removing a setup if we are connected', async function () {
         const setup = jest.fn().mockImplementation(() => Promise.resolve());
         const teardown = jest.fn().mockImplementation(() => Promise.resolve());
 
@@ -478,7 +486,7 @@ describe('ChannelWrapper', function () {
         expect(teardown).to.have.beenCalledTimes(1);
     });
 
-    it.skip('should proxy acks and nacks to the underlying channel', function () {
+    it('should proxy acks and nacks to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
@@ -507,7 +515,7 @@ describe('ChannelWrapper', function () {
         });
     });
 
-    it.skip("should proxy acks and nacks to the underlying channel, even if we aren't done setting up", async () => {
+    it("should proxy acks and nacks to the underlying channel, even if we aren't done setting up", async () => {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
         const a = makeMessage('a');
@@ -530,13 +538,13 @@ describe('ChannelWrapper', function () {
         expect(channel.nack).to.have.beenCalledWith(b, undefined, undefined);
     });
 
-    it.skip('should ignore acks and nacks if we are disconnected', function () {
+    it('should ignore acks and nacks if we are disconnected', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.ack(makeMessage('a'), true);
         return channelWrapper.nack(makeMessage('c'), false, true);
     });
 
-    it.skip('should proxy assertQueue, checkQueue, bindQueue, assertExchange, checkExchange to the underlying channel', function () {
+    it('should proxy assertQueue, checkQueue, bindQueue, assertExchange, checkExchange to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
@@ -566,7 +574,7 @@ describe('ChannelWrapper', function () {
         });
     });
 
-    it.skip('should proxy assertQueue, assertExchange, bindQueue and unbindQueue to the underlying channel', function () {
+    it('should proxy assertQueue, assertExchange, bindQueue and unbindQueue to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
@@ -591,7 +599,7 @@ describe('ChannelWrapper', function () {
         });
     });
 
-    it.skip(`should proxy assertQueue, bindQueue, assertExchange to the underlying channel, even if we aren't done setting up`, async () => {
+    it(`should proxy assertQueue, bindQueue, assertExchange to the underlying channel, even if we aren't done setting up`, async () => {
         const channelWrapper = new ChannelWrapper(connectionManager);
 
         channelWrapper.addSetup(function () {
@@ -615,14 +623,14 @@ describe('ChannelWrapper', function () {
         expect(channel.assertExchange).to.have.beenCalledWith('bone', 'topic', undefined);
     });
 
-    it.skip('should ignore assertQueue, bindQueue, assertExchange if we are disconnected', function () {
+    it('should ignore assertQueue, bindQueue, assertExchange if we are disconnected', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         channelWrapper.assertQueue('dog', { durable: true });
         channelWrapper.bindQueue('dog', 'bone', '.*');
         channelWrapper.assertExchange('bone', 'topic');
     });
 
-    it.skip('should proxy bindExchange, unbindExchange and deleteExchange to the underlying channel', function () {
+    it('should proxy bindExchange, unbindExchange and deleteExchange to the underlying channel', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager);
         return channelWrapper.waitForConnect().then(function () {
@@ -650,7 +658,7 @@ describe('ChannelWrapper', function () {
 
     // Not much to test here - just make sure we don't throw any exceptions or anything weird.  :)
 
-    it.skip('clean up when closed', function () {
+    it('clean up when closed', function () {
         let closeEvents = 0;
 
         connectionManager.simulateConnect();
@@ -668,7 +676,7 @@ describe('ChannelWrapper', function () {
         });
     });
 
-    it.skip('clean up when closed when not connected', function () {
+    it('clean up when closed when not connected', function () {
         let closeEvents = 0;
 
         return Promise.resolve()
@@ -683,7 +691,7 @@ describe('ChannelWrapper', function () {
             );
     });
 
-    it.skip('reject outstanding messages when closed', function () {
+    it('reject outstanding messages when closed', function () {
         const channelWrapper = new ChannelWrapper(connectionManager);
         const p1 = channelWrapper.publish('exchange', 'routingKey', 'argleblargle', {
             messageId: 'foo',
@@ -691,7 +699,7 @@ describe('ChannelWrapper', function () {
         return Promise.all([channelWrapper.close(), expect(p1).to.be.rejected]);
     });
 
-    it.skip('should encode JSON messages', function () {
+    it('should encode JSON messages', function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
             json: true,
@@ -712,7 +720,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it.skip('should reject messages when JSON encoding fails', function () {
+    it('should reject messages when JSON encoding fails', function () {
         const badJsonMesage: { x: any } = { x: 7 };
         badJsonMesage.x = badJsonMesage;
 
@@ -726,7 +734,7 @@ describe('ChannelWrapper', function () {
         });
     });
 
-    it.skip('should reject messages if they get rejected by the broker', async function () {
+    it('should reject messages if they get rejected by the broker', async function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
             setup(channel: amqplib.ConfirmChannel) {
@@ -757,7 +765,7 @@ describe('ChannelWrapper', function () {
         await expect(p2).to.be.rejectedWith('no send');
     });
 
-    it.skip('should reject correct message if broker rejects out of order', async function () {
+    it('should reject correct message if broker rejects out of order', async function () {
         connectionManager.simulateConnect();
 
         const callbacks: {
@@ -805,7 +813,7 @@ describe('ChannelWrapper', function () {
         expect(resent.message.toString()).to.equal('content1');
     });
 
-    it.skip('should keep sending messages, even if we disconnect in the middle of sending', async function () {
+    it('should keep sending messages, even if we disconnect in the middle of sending', async function () {
         const callbacks: ((err: Error | undefined) => void)[] = [];
 
         connectionManager.simulateConnect();
@@ -844,7 +852,7 @@ describe('ChannelWrapper', function () {
         await p1;
     });
 
-    it.skip('should handle getting a confirm out-of-order with a disconnect', async function () {
+    it('should handle getting a confirm out-of-order with a disconnect', async function () {
         const callbacks: ((err: Error | undefined) => void)[] = [];
 
         connectionManager.simulateConnect();
@@ -884,7 +892,7 @@ describe('ChannelWrapper', function () {
         await p1;
     });
 
-    it.skip('should handle getting a confirm out-of-order with a disconnect and reconnect', async function () {
+    it('should handle getting a confirm out-of-order with a disconnect and reconnect', async function () {
         const callbacks: ((err: Error | undefined) => void)[] = [];
 
         connectionManager.simulateConnect();
@@ -924,7 +932,7 @@ describe('ChannelWrapper', function () {
         await p1;
     });
 
-    it.skip('should emit an error, we disconnect during publish with code 502 (AMQP Frame Syntax Error)', function () {
+    it('should emit an error, we disconnect during publish with code 502 (AMQP Frame Syntax Error)', function () {
         connectionManager.simulateConnect();
         const err = new Error('AMQP Frame Syntax Error');
         (err as any).code = 502;
@@ -954,7 +962,7 @@ describe('ChannelWrapper', function () {
             });
     });
 
-    it.skip('should retry, we disconnect during publish with code 320 (AMQP Connection Forced Error)', async function () {
+    it('should retry, we disconnect during publish with code 320 (AMQP Connection Forced Error)', async function () {
         const callbacks: ((err: Error | undefined) => void)[] = [];
 
         connectionManager.simulateConnect();
@@ -995,7 +1003,7 @@ describe('ChannelWrapper', function () {
         await p1;
     });
 
-    it.skip('should publish queued messages to the underlying channel without waiting for confirms', async function () {
+    it('should publish queued messages to the underlying channel without waiting for confirms', async function () {
         connectionManager.simulateConnect();
         const channelWrapper = new ChannelWrapper(connectionManager, {
             setup(channel: amqplib.ConfirmChannel) {
@@ -1015,7 +1023,7 @@ describe('ChannelWrapper', function () {
         expect(p2).to.not.be.fulfilled;
     });
 
-    it.skip('should stop publishing messages to the queue when the queue is full', async function () {
+    it('should stop publishing messages to the queue when the queue is full', async function () {
         const queue: (() => void)[] = [];
         let innerChannel: amqplib.Channel = {} as any;
 
@@ -1053,7 +1061,7 @@ describe('ChannelWrapper', function () {
         expect(queue.length).to.equal(2);
     });
 
-    it.skip('should consume messages', async function () {
+    it('should consume messages', async function () {
         let onMessage: any = null;
 
         connectionManager.simulateConnect();
@@ -1082,7 +1090,7 @@ describe('ChannelWrapper', function () {
         expect(messages).to.deep.equal([1, 2, 3]);
     });
 
-    it.skip('should reconnect consumer on consumer cancellation', async function () {
+    it('should reconnect consumer on consumer cancellation', async function () {
         let onMessage: any = null;
         let consumerTag = 0;
 
@@ -1112,7 +1120,7 @@ describe('ChannelWrapper', function () {
         expect(consumerTag).to.equal(3);
     });
 
-    it.skip('should reconnect consumers on channel error', async function () {
+    it('should reconnect consumers on channel error', async function () {
         let onQueue1: any = null;
         let onQueue2: any = null;
         let consumerTag = 0;
@@ -1171,7 +1179,7 @@ describe('ChannelWrapper', function () {
         expect(prefetchFn).to.have.beenNthCalledWith(2, 10, false);
     });
 
-    it.skip('should be able to cancel all consumers', async function () {
+    it('should be able to cancel all consumers', async function () {
         let onQueue1: any = null;
         let onQueue2: any = null;
         let consumerTag = 0;
@@ -1227,7 +1235,7 @@ describe('ChannelWrapper', function () {
         expect(canceledTags).to.deep.equal(['0', '1']);
     });
 
-    it.skip('should be able to cancel specific consumers', async function () {
+    it('should be able to cancel specific consumers', async function () {
         let onQueue1: any = null;
         let onQueue2: any = null;
         const canceledTags: number[] = [];
@@ -1292,7 +1300,7 @@ describe('ChannelWrapper', function () {
         expect(canceledTags).to.deep.equal(['1', '2']);
     });
 
-    it.skip('should not register same consumer twice', async function () {
+    it('should not register same consumer twice', async function () {
         const setup = jest.fn().mockImplementation(() => promiseTools.delay(10));
 
         const channelWrapper = new ChannelWrapper(connectionManager, { setup });

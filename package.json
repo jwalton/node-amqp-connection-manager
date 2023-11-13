@@ -67,10 +67,12 @@
         "prepare": "husky install && npm run build",
         "prepublishOnly": "npm run build",
         "build": "tsc && tsc -p tsconfig.cjs.json && tsc -p tsconfig.types.json && ./bin/build-types.sh",
-        "clean": "rm -rf dist types coverage",
+        "build:testpack": "npm run clean && npm run build && npm pack --pack-destination pack",
+        "clean": "rm -rf dist coverage",
         "test": "npm run test:lint && npm run test:unittest",
         "test:unittest": "tsc -p test && jest --coverage",
         "test:lint": "eslint --ext .ts src test",
+        "test:lint:fix": "eslint --fix --ext .ts src test",
         "semantic-release": "semantic-release"
     },
     "repository": {

@@ -7,10 +7,10 @@ import {
     Consumer,
     ConsumerOptions,
     CreateChannelOptions,
-    IAmqpConnectionManager,
-    IChannelWrapper,
     Message as AmqpMessage,
     PublishOptions,
+    IAmqpConnectionManager,
+    IChannelWrapper,
     SetupFunc
 } from "./decorate";
 

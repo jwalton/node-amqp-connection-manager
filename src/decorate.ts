@@ -3,6 +3,7 @@ import {Connection, ConsumeMessage, Options} from 'amqplib';
 import {TcpSocketConnectOpts} from "net";
 import {ConnectionOptions} from "tls";
 import ChannelWrapper from "./ChannelWrapper";
+import AmqpConnectionManager from  "./AmqpConnectionManager"
 
 /**
  * AmqpConnectionOptions
@@ -215,7 +216,7 @@ export interface SendToQueueMessage {
 export type Message = PublishMessage | SendToQueueMessage;
 
 export interface PublishOptions extends Options.Publish {
-  /** Message will be rejected after timeout ms */
+  /** The Message will be rejected after timeout ms. */
   timeout?: number;
 }
 
@@ -229,3 +230,5 @@ export interface Consumer {
   onMessage: (msg: ConsumeMessage) => void;
   options: ConsumerOptions;
 }
+
+export { AmqpConnectionManager, ChannelWrapper };

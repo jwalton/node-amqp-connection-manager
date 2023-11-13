@@ -1,5 +1,5 @@
-import AmqpConnectionManager from "./AmqpConnectionManager";
-import {AmqpConnectionManagerOptions} from "./decorate";
+import {AmqpConnectionManager, AmqpConnectionManagerOptions} from "./decorate";
+import {ChannelWrapper, CreateChannelOptions} from "./decorate";
 
 /**
  * Connect and maintain to the RabbitMQ System
@@ -11,11 +11,15 @@ import {AmqpConnectionManagerOptions} from "./decorate";
  * @returns {Promise<AmqpConnectionManager>}
  */
 const connect = async (urls: any, options?: AmqpConnectionManagerOptions): Promise<AmqpConnectionManager> => {
-    const conn = new AmqpConnectionManager(urls, options);
-    await conn.connect().catch(() => {
-        /* noop */
-    });
-    return conn;
+  const conn = new AmqpConnectionManager(urls, options);
+  await conn.connect().catch(() => {
+    /* noop */
+  });
+  return conn;
 }
 
-export const amqp  = { connect }
+const amqp = {connect};
+
+export {AmqpConnectionManager, ChannelWrapper, AmqpConnectionManagerOptions, CreateChannelOptions}
+
+export default amqp;

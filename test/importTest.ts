@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 
 import { expect } from 'chai';
-import {amqp} from "../src";
+import amqp from "../src";
 import AmqpConnectionManager from "../src/AmqpConnectionManager";
 
 describe('import test', function () {

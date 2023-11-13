@@ -309,4 +309,3 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         }
     }
 }
-
