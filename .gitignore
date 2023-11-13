@@ -5,4 +5,5 @@
 /package-lock.json
 /.nyc_output
 /.vscode
+/.idea
 /dist

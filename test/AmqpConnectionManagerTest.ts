@@ -1,356 +1,469 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+
 import origAmqp from 'amqplib';
 import chai from 'chai';
 import chaiString from 'chai-string';
-import { once } from 'events';
+import {once} from 'events';
 import * as promiseTools from 'promise-tools';
 import AmqpConnectionManager from '../src/AmqpConnectionManager';
-import { FakeAmqp, FakeConnection } from './fixtures';
+import {FakeAmqp, FakeConnection} from './helpers/fixtures';
 
 chai.use(chaiString);
-const { expect } = chai;
+const {expect} = chai;
 
 const amqplib = new FakeAmqp();
 
 describe('AmqpConnectionManager', function () {
-    let amqp: AmqpConnectionManager | undefined;
+  let amqp: AmqpConnectionManager | undefined;
 
-    beforeEach(() => {
-        jest.spyOn(origAmqp, 'connect').mockImplementation(((url: string) =>
-            amqplib.connect(url)) as any);
-        amqplib.reset();
+  beforeEach(() => {
+    jest.spyOn(origAmqp, 'connect').mockImplementation(((url: string) =>
+      amqplib.connect(url)) as any);
+    amqplib.reset();
+  });
+
+  afterEach(() => {
+    amqp?.close();
+    jest.restoreAllMocks();
+  });
+
+  describe('sanity checks', function () {
+
+    it('constructor - fail - no urls passed', async () => {
+      try {
+        // @ts-expect-errors no options passed. so it will fail. go figure.
+        new AmqpConnectionManager()
+      } catch (e: any) {
+        expect(e.message).to.equal('amqp-connection-manager: Must supply either `urls` or `findServers`')
+      }
+    })
+
+    it('constructor - fail - findServers returns no servers', async () => {
+      amqp = new AmqpConnectionManager(null, {
+        connectionOptions: {
+          findServers() {
+            return Promise.resolve(null);
+          },
+        }
+      });
+      amqp.connect();
+
+      const [{err}] = await once(amqp, 'connectFailed');
+      expect(err.message).to.contain('No servers found');
+
+      return amqp?.close();
     });
 
-    afterEach(() => {
-        amqp?.close();
-        jest.restoreAllMocks();
+    it('constructor - fail - throw an error if no url and no `findServers` option are provided', async () => {
+      expect(() => new (AmqpConnectionManager as any)()).to.throw(
+        'Must supply either `urls` or `findServers`'
+      );
     });
 
-    it('should establish a connection to a broker', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.equal('amqp://localhost');
-        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+  })
+
+  describe('should establish a connection to a broker, urls filled out', function () {
+
+    it('...basic', async () => {
+      // connect tho this manager
+      amqp = new AmqpConnectionManager('amqp://localhost');
+      amqp.connect();
+
+      // get the results
+      const [{url}] = await once(amqp, 'connect');
+
+      // do the testing
+      expect(url, 'url').to.equal('amqp://localhost');
     });
 
-    it('should establish a connection to a broker, using an object as the URL', async () => {
-        amqp = new AmqpConnectionManager({
-            protocol: 'amqp',
-            hostname: 'localhost',
-        });
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.eql({
-            protocol: 'amqp',
-            hostname: 'localhost',
-        });
-        expect((connection as any).url, 'connection.url').to.eql({
-            protocol: 'amqp',
-            hostname: 'localhost',
-            heartbeat: 5,
-        });
+    it('... using an object as the URL', async () => {
+
+      // connect tho this manager
+      amqp = new AmqpConnectionManager({
+        protocol: 'amqp',
+        hostname: 'localhost',
+      });
+      amqp.connect();
+
+      // get the results
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      // do the testing
+      expect(url, 'url').to.eql({
+        protocol: 'amqp',
+        hostname: 'localhost',
+      });
+      expect(connection.url, 'connection.url').to.eql({
+        protocol: 'amqp',
+        hostname: 'localhost',
+        heartbeat: 0
+      });
     });
 
-    it('should establish a url object based connection to a broker', async () => {
-        amqp = new AmqpConnectionManager({ url: 'amqp://localhost' });
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.equal('amqp://localhost');
-        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+    it('... using url object', async () => {
+      // connect tho this manager
+      amqp = new AmqpConnectionManager({url: 'amqp://localhost'});
+      amqp.connect();
+
+      // get the results
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      // do the testing
+      expect(url, 'url').to.equal('amqp://localhost');
+      expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=0')
     });
 
-    it('should establish a connection to a broker disabling heartbeat', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost', {
-            heartbeatIntervalInSeconds: 0,
-        });
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.equal('amqp://localhost');
-        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=0');
+    it('... complex query', async () => {
+      amqp = new AmqpConnectionManager('amqp://localhost?frameMax=0x1000');
+      amqp.connect();
+
+      const [{connection}] = await once(amqp, 'connect');
+
+      expect(connection.url, 'connection.url').to.equal(
+        'amqp://localhost?frameMax=0x1000&heartbeat=0'
+      );
     });
 
-    it('should close connection to a broker', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.equal('amqp://localhost');
-        expect((connection as any).url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
-        const conn = amqp.connection;
-        await amqp?.close();
+  })
 
-        expect(amqp?.connection, 'current connection').to.be.undefined;
-        expect((conn as any)._closed, 'connection closed').to.be.true;
+  describe('should establish a connection to a broker, findServers', function () {
+
+    it('... basic', async () => {
+      // connect tho this manager
+      amqp = new AmqpConnectionManager(null, {
+        connectionOptions: {
+          findServers() {
+            return Promise.resolve('amqp://localhost');
+          },
+        }
+      });
+      amqp.connect();
+
+      // get the results
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      // do the testing
+      expect(url, 'url').to.equal('amqp://localhost');
+      expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=0')
+    });
+
+    it('... object', async () => {
+      // connect tho this manager
+      amqp = new AmqpConnectionManager(null, {
+        connectionOptions: {
+          findServers() {
+            return Promise.resolve({url: 'amqp://localhost'});
+          },
+        }
+      });
+      amqp.connect();
+
+      // get the results
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      // do the testing
+      expect(url, 'url').to.equal('amqp://localhost');
+      expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=0')
+    });
+
+    it('... array of servers objects', async () => {
+      amqp = new AmqpConnectionManager(null, {
+        connectionOptions: {
+          findServers() {
+            return Promise.resolve([{url: 'amqp://localhost'}, {url: 'amqp://localhost'}]);
+          },
+        }
+      });
+      amqp.connect();
+
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      expect(url, 'url').to.equal('amqp://localhost');
+      expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=0');
+    });
+
+  })
+
+  describe('should establish a connection to a broker, testing optional settings', function () {
+
+    it('... enabling heartbeat', async () => {
+      amqp = new AmqpConnectionManager('amqp://localhost', {
+        connectionOptions: {
+          heartbeatIntervalInSeconds: 5
+        }
+      });
+      amqp.connect();
+
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      expect(url, 'url').to.equal('amqp://localhost');
+      expect((connection as any).url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
+    });
+
+  })
+
+  describe('close tests to the broker', function () {
+
+    it('... basic', async () => {
+      amqp = new AmqpConnectionManager('amqp://localhost');
+      amqp.connect();
+
+      const [{connection, url}] = await once(amqp, 'connect');
+
+      expect(url, 'url').to.equal('amqp://localhost');
+      expect((connection as any).url, 'connection.url').to.equal('amqp://localhost?heartbeat=0');
+
+      const conn = amqp.connection;
+      await amqp?.close();
+
+      expect(amqp?.connection, 'current connection').to.be.undefined;
+      expect((conn as any)._closed, 'connection closed').to.be.true;
     });
 
     // /**
     //  * When close() was called before _connect() finished, the connection was remaining established indefinitely
     //  */
-    it('should close pending connection to a broker', async () => {
-        let closed = false;
-        let connected = false;
+    it('... pending connection', async () => {
+      let closed = false;
+      let connected = false;
 
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        amqp.connect();
-        // Connection should not yet be established
-        expect(amqp.connection, 'current connection').to.equal(undefined);
-        // Connection should be pending though
-        expect((amqp as any)._connectPromise).to.be.an.instanceof(Promise);
+      amqp = new AmqpConnectionManager('amqp://localhost');
+      amqp.connect();
 
-        // Call close before the connection is established
-        const closePromise = amqp.close().then(() => {
-            closed = true;
+      // Connection should not yet be established
+      expect(amqp.connection, 'current connection').to.equal(undefined);
+      // Connection should be pending though
+      expect((amqp as any)._connectPromise).to.be.an.instanceof(Promise);
 
-            // Connection should not present after close
-            expect(amqp?.connection, 'current connection').to.be.undefined;
-            // Connection promise should not be present anymore
-            expect((amqp as any)._connectPromise).to.be.undefined;
-            // Connect should resolve before close
-            expect(connected).to.equal(true);
-        });
+      // Call close before the connection is established
+      const closePromise = amqp.close().then(() => {
+        closed = true;
+        // Connection should not present after close
+        expect(amqp?.connection, 'current connection').to.be.undefined;
+        // Connection promise should not be present anymore
+        expect((amqp as any)._connectPromise).to.be.undefined;
+        // Connect should resolve before close
+        expect(connected).to.equal(true);
+      });
 
-        // This prevents double call to close()
-        expect((amqp as any)._closed).to.equal(true);
+      // This prevents double call to close()
+      expect((amqp as any)._closed).to.equal(true);
 
-        // Wait for connect before checking amqp?.connection
-        const connectPromise = new Promise((resolve, reject) => {
-            // I tried to use once helper from events module but
-            // does not work with babel for some reason
-            amqp?.once('connect', resolve);
-            amqp?.once('error', reject);
-        }).then(() => {
-            connected = true;
+      // Wait for 'connect' before checking amqp?.connection
+      const connectPromise = new Promise((resolve, reject) => {
+        // I tried to use once helper from events module but
+        // does not work with babel for some reason
+        amqp?.once('connect', resolve);
+        amqp?.once('error', reject);
+      }).then(() => {
+        connected = true;
+        // Connection should be present right after 'connect'
+        expect(amqp?.connection, 'current connection').to.be.an.instanceof(FakeConnection);
+        // Connection promise should not be present anymore
+        expect((amqp as any)._connectPromise).to.be.undefined;
+        // Connect should resolve before close
+        expect(closed).to.equal(false);
+      });
 
-            // Connection should be present right after connect
-            expect(amqp?.connection, 'current connection').to.be.an.instanceof(FakeConnection);
-            // Connection promise should not be present anymore
-            expect((amqp as any)._connectPromise).to.be.undefined;
-            // Connect should resolve before close
-            expect(closed).to.equal(false);
-        });
-
-        await Promise.all([closePromise, connectPromise]);
+      await Promise.all([closePromise, connectPromise]);
     });
 
-    it('should establish a connection to a broker using findServers', async () => {
-        amqp = new AmqpConnectionManager(null, {
-            findServers() {
-                return Promise.resolve('amqp://localhost');
-            },
-        });
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.equal('amqp://localhost');
-        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
-    });
+  })
 
-    it('should establish a url object based connection to a broker using findServers', async () => {
-        amqp = new AmqpConnectionManager(null, {
-            findServers() {
-                return Promise.resolve({ url: 'amqp://localhost' });
-            },
-        });
-        amqp.connect();
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(url, 'url').to.equal('amqp://localhost');
-        expect(connection.url, 'connection.url').to.equal('amqp://localhost?heartbeat=5');
-    });
+  describe('reconnect tests', function () {
 
-    it('should fail to connect if findServers returns no servers', async () => {
-        amqp = new AmqpConnectionManager(null, {
-            findServers() {
-                return Promise.resolve(null);
-            },
-        });
+    it("... if it can't connect in the first place", async () => {
+      amqplib.deadServers = ['amqp://rabbit1'];
 
-        amqp.connect();
-        const [{ err }] = await once(amqp, 'connectFailed');
-        expect(err.message).to.contain('No servers found');
-        return amqp?.close();
-    });
-
-    it('should timeout connect', async () => {
-        jest.spyOn(origAmqp, 'connect').mockImplementation((): any => {
-            return promiseTools.delay(200);
-        });
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        let err;
-        try {
-            await amqp.connect({ timeout: 0.1 });
-        } catch (error: any) {
-            err = error;
+      // Should try to connect to rabbit1 first and be refused, and then successfully connect to rabbit2.
+      amqp = new AmqpConnectionManager(['amqp://rabbit1', 'amqp://rabbit2'], {
+        connectionOptions: {
+          heartbeatIntervalInSeconds: 0.01
         }
-        expect(err.message).to.equal('amqp-connection-manager: connect timeout');
+      });
+      amqp.connect();
+
+      let connectFailedSeen = 0;
+      amqp.on('connectFailed', function () {
+        connectFailedSeen++;
+        amqplib.failConnections = false;
+      });
+
+      const [{connection, url}] = await once(amqp, 'connect');
+      expect(connectFailedSeen).to.equal(1);
+
+      // Verify that we round-robin to the next server, since the first was unavailable.
+      expect(url, 'url').to.equal('amqp://rabbit2');
+      if (typeof url !== 'string') {
+        throw new Error('url is not a string');
+      }
+      expect((connection as any).url, 'connection.url').to.startWith(url);
     });
 
-    it('should work with a URL with a query', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost?frameMax=0x1000');
-        amqp.connect();
-        const [{ connection }] = await once(amqp, 'connect');
-        expect(connection.url, 'connection.url').to.equal(
-            'amqp://localhost?frameMax=0x1000&heartbeat=5'
-        );
-    });
-
-    it('should throw an error if no url and no `findServers` option are provided', async () => {
-        expect(() => new (AmqpConnectionManager as any)()).to.throw(
-            'Must supply either `urls` or `findServers`'
-        );
-    });
-
-    it("should reconnect to the broker if it can't connect in the first place", async () => {
-        amqplib.deadServers = ['amqp://rabbit1'];
-
-        // Should try to connect to rabbit1 first and be refused, and then successfully connect to rabbit2.
-        amqp = new AmqpConnectionManager(['amqp://rabbit1', 'amqp://rabbit2'], {
-            heartbeatIntervalInSeconds: 0.01,
-        });
-        amqp.connect();
-
-        let connectFailedSeen = 0;
-        amqp.on('connectFailed', function () {
-            connectFailedSeen++;
-            amqplib.failConnections = false;
-        });
-
-        const [{ connection, url }] = await once(amqp, 'connect');
-        expect(connectFailedSeen).to.equal(1);
-
-        // Verify that we round-robined to the next server, since the first was unavailable.
-        expect(url, 'url').to.equal('amqp://rabbit2');
-        if (typeof url !== 'string') {
-            throw new Error('url is not a string');
+    it('... if the broker disconnects', async () => {
+      amqp = new AmqpConnectionManager('amqp://localhost', {
+        connectionOptions: {
+          heartbeatIntervalInSeconds: 0.01
         }
-        expect((connection as any).url, 'connection.url').to.startWith(url);
+      });
+      let disconnectsSeen = 0;
+      amqp.on('disconnect', () => disconnectsSeen++);
+
+      await amqp.connect();
+      amqplib.kill();
+
+      amqp.connect();
+      expect(disconnectsSeen).to.equal(1);
     });
 
-    it('should reconnect to the broker if the broker disconnects', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost', {
-            heartbeatIntervalInSeconds: 0.01,
-        });
-        let disconnectsSeen = 0;
-        amqp.on('disconnect', () => disconnectsSeen++);
+    it('... if the broker closed connection', async () => {
+      amqp = new AmqpConnectionManager('amqp://localhost', {
+        connectionOptions: {
+          heartbeatIntervalInSeconds: 0.01
+        }
+      });
 
-        await amqp.connect();
-        amqplib.kill();
+      let disconnectsSeen = 0;
+      amqp.on('disconnect', () => disconnectsSeen++);
 
-        await amqp.connect();
-        expect(disconnectsSeen).to.equal(1);
+      amqp.connect();
+      await once(amqp, 'connect');
+
+      // Close the connection nicely
+      amqplib.simulateRemoteClose();
+
+      expect(disconnectsSeen).to.equal(1);
     });
 
-    it('should reconnect to the broker if the broker closed connection', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost', {
-            heartbeatIntervalInSeconds: 0.01,
-        });
+  })
 
-        let disconnectsSeen = 0;
-        amqp.on('disconnect', () => disconnectsSeen++);
+  it('should timeout connect', async () => {
+    jest.spyOn(origAmqp, 'connect').mockImplementation((): any => {
+      return promiseTools.delay(200);
+    });
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    let err;
+    try {
+      await amqp.connect({timeout: 0.1});
+    } catch (error: any) {
+      err = error;
+    }
+    expect(err.message).to.equal('amqp-connection-manager: connect timeout');
+  });
 
-        await amqp.connect();
+  it('should know if it is connected or not', async () => {
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    amqp.connect();
 
-        // Close the connection nicely
-        amqplib.simulateRemoteClose();
+    expect(amqp.isConnected()).to.be.false;
 
-        await once(amqp, 'connect');
-        expect(disconnectsSeen).to.equal(1);
+    await once(amqp, 'connect');
+    expect(amqp?.isConnected()).to.be.true;
+  });
+
+  it('should be able to manually reconnect', async () => {
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    amqp.connect();
+    await once(amqp, 'connect');
+
+    amqp.reconnect();
+    await once(amqp, 'disconnect');
+  });
+
+  it('should throw on manual reconnect after close', async () => {
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    await amqp.connect();
+    await amqp.close();
+    expect(amqp.reconnect).to.throw();
+  });
+
+  it('should create and clean up channel wrappers', async function () {
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    await amqp.connect();
+    const channel = amqp.createChannel({name: 'test-chan'});
+
+    // Channel should register with connection manager
+    expect(amqp.channelCount, 'registered channels').to.equal(1);
+    expect(amqp.listeners('connect').length, 'connect listeners').to.equal(1);
+    expect(amqp.listeners('disconnect').length, 'disconnect listeners').to.equal(1);
+
+    // Closing the channel should remove all listeners and deregister the channel
+    await channel.close();
+
+    expect(amqp.channelCount, 'registered channels after close').to.equal(0);
+    expect(amqp.listeners('connect').length, 'connect listeners after close').to.equal(0);
+    expect(amqp.listeners('disconnect').length, 'disconnect listeners after close').to.equal(0);
+  });
+
+  it('should create and be able to find channel', async function () {
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    await amqp.connect();
+    const channel = amqp.createChannel({name: 'test-chan'});
+    const findChannel = amqp.findChannel('test-chan');
+    // Channel should register with connection manager
+    expect(amqp.channelCount, 'registered channels').to.equal(1);
+    expect(channel, 'same channel').to.equal(findChannel);
+
+    // Closing the channel should remove all listeners and deregister the channel
+    await channel.close();
+  });
+
+  it('should clean up channels on close', async function () {
+    amqp = new AmqpConnectionManager('amqp://localhost');
+    await amqp.connect();
+    amqp.createChannel({name: 'test-chan'});
+
+    // Channel should register with connection manager
+    expect(amqp.channelCount, 'registered channels').to.equal(1);
+    expect(amqp.listeners('connect').length, 'connect listeners').to.equal(1);
+    expect(amqp.listeners('disconnect').length, 'disconnect listeners').to.equal(1);
+
+    // Closing the connection should remove all listeners and deregister the channel
+    await amqp.close();
+
+    expect(amqp.channelCount, 'registered channels after close').to.equal(0);
+    expect(amqp.listeners('connect').length, 'connect listeners after close').to.equal(0);
+    expect(amqp.listeners('disconnect').length, 'disconnect listeners after close').to.equal(0);
+  });
+
+  it('should not reconnect after close', async () => {
+    amqp = new AmqpConnectionManager('amqp://localhost', {
+      connectionOptions: {
+        heartbeatIntervalInSeconds: 0.01
+      }
     });
 
-    it('should know if it is connected or not', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        amqp.connect();
+    let connectsSeen = 0;
+    amqp.on('connect', () => connectsSeen++);
+    await amqp.connect();
 
-        expect(amqp.isConnected()).to.be.false;
+    // Close the manager
+    await amqp?.close();
 
-        await once(amqp, 'connect');
-        expect(amqp?.isConnected()).to.be.true;
-    });
+    // Murder the broker on the first connecting
+    amqplib.kill();
 
-    it('should be able to manually reconnect', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        await amqp.connect();
+    await promiseTools.delay(50);
+    expect(connectsSeen).to.equal(1);
+  });
 
-        amqp.reconnect();
-        await once(amqp, 'disconnect');
-        await once(amqp, 'connect');
-    });
+  it('should detect connection block/unblock', async () => {
+    amqp = new AmqpConnectionManager('amqp://localhost');
 
-    it('should throw on manual reconnect after close', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        await amqp.connect();
-        await amqp.close();
-        expect(amqp.reconnect).to.throw();
-    });
+    let blockSeen = 0;
+    let unblockSeen = 0;
 
-    it('should create and clean up channel wrappers', async function () {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        await amqp.connect();
-        const channel = amqp.createChannel({ name: 'test-chan' });
+    amqp.on('blocked', () => blockSeen++);
 
-        // Channel should register with connection manager
-        expect(amqp.channelCount, 'registered channels').to.equal(1);
-        expect(amqp.listeners('connect').length, 'connect listners').to.equal(1);
-        expect(amqp.listeners('disconnect').length, 'disconnect listners').to.equal(1);
+    amqp.on('unblocked', () => unblockSeen++);
 
-        // Closing the channel should remove all listeners and de-register the channel
-        await channel.close();
+    await amqp.connect();
+    // Close the connection nicely
+    amqplib.simulateRemoteBlock();
+    amqplib.simulateRemoteUnblock();
 
-        expect(amqp.channelCount, 'registered channels after close').to.equal(0);
-        expect(amqp.listeners('connect').length, 'connect listners after close').to.equal(0);
-        expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal(0);
-    });
+    expect(blockSeen).to.equal(1);
+    expect(unblockSeen).to.equal(1);
+  });
 
-    it('should clean up channels on close', async function () {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-        await amqp.connect();
-        amqp.createChannel({ name: 'test-chan' });
-
-        // Channel should register with connection manager
-        expect(amqp.channelCount, 'registered channels').to.equal(1);
-        expect(amqp.listeners('connect').length, 'connect listners').to.equal(1);
-        expect(amqp.listeners('disconnect').length, 'disconnect listners').to.equal(1);
-
-        // Closing the connection should remove all listeners and de-register the channel
-        await amqp.close();
-
-        expect(amqp.channelCount, 'registered channels after close').to.equal(0);
-        expect(amqp.listeners('connect').length, 'connect listners after close').to.equal(0);
-        expect(amqp.listeners('disconnect').length, 'disconnect listners after close').to.equal(0);
-    });
-
-    it('should not reconnect after close', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost', {
-            heartbeatIntervalInSeconds: 0.01,
-        });
-
-        let connectsSeen = 0;
-        amqp.on('connect', () => connectsSeen++);
-        await amqp.connect();
-
-        // Close the manager
-        await amqp?.close();
-
-        // Murder the broker on the first connect
-        amqplib.kill();
-
-        await promiseTools.delay(50);
-        expect(connectsSeen).to.equal(1);
-    });
-
-    it('should detect connection block/unblock', async () => {
-        amqp = new AmqpConnectionManager('amqp://localhost');
-
-        let blockSeen = 0;
-        let unblockSeen = 0;
-
-        amqp.on('blocked', () => blockSeen++);
-
-        amqp.on('unblocked', () => unblockSeen++);
-
-        await amqp.connect();
-        // Close the connection nicely
-        amqplib.simulateRemoteBlock();
-        amqplib.simulateRemoteUnblock();
-
-        expect(blockSeen).to.equal(1);
-        expect(unblockSeen).to.equal(1);
-    });
 });

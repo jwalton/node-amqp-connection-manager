@@ -1,164 +1,37 @@
-import type * as amqplib from 'amqplib';
-import { Options } from 'amqplib';
-import * as crypto from 'crypto';
+import {Message, Connection, GetMessage, Options, Replies } from 'amqplib';
 import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
-import { promisify } from 'util';
-import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
+import {CHANNEL_IRRECOVERABLE_ERRORS, CHANNEL_MAX_MESSAGES_PER_BATCH, randomBytes} from "./constants";
+import {
+    Channel,
+    Consumer,
+    ConsumerOptions,
+    CreateChannelOptions,
+    IAmqpConnectionManager,
+    IChannelWrapper,
+    Message as AmqpMessage,
+    PublishOptions,
+    SetupFunc
+} from "./decorate";
 
-const MAX_MESSAGES_PER_BATCH = 1000;
-
-const randomBytes = promisify(crypto.randomBytes);
-
-export type Channel = amqplib.ConfirmChannel | amqplib.Channel;
-
-export type SetupFunc =
-    | ((channel: Channel, callback: (error?: Error) => void) => void)
-    | ((channel: Channel) => Promise<void>)
-    | ((channel: amqplib.ConfirmChannel, callback: (error?: Error) => void) => void)
-    | ((channel: amqplib.ConfirmChannel) => Promise<void>);
-
-export interface CreateChannelOpts {
-    /**  Name for this channel. Used for debugging. */
-    name?: string;
-    /**
-     * A function to call whenever we reconnect to the broker (and therefore create a new underlying channel.)
-     * This function should either accept a callback, or return a Promise. See addSetup below
-     */
-    setup?: SetupFunc;
-    /**
-     * True to create a ConfirmChannel (default). False to create a regular Channel.
-     */
-    confirm?: boolean;
-    /**
-     * if true, then ChannelWrapper assumes all messages passed to publish() and sendToQueue() are plain JSON objects.
-     * These will be encoded automatically before being sent.
-     */
-    json?: boolean;
-    /**
-     * Default publish timeout in ms. Messages not published within the given time are rejected with a timeout error.
-     */
-    publishTimeout?: number;
-}
-
-interface PublishMessage {
-    type: 'publish';
-    exchange: string;
-    routingKey: string;
-    content: Buffer;
-    options?: amqplib.Options.Publish;
-    resolve: (result: boolean) => void;
-    reject: (err: Error) => void;
-    timeout?: NodeJS.Timeout;
-    isTimedout: boolean;
-}
-
-interface SendToQueueMessage {
-    type: 'sendToQueue';
-    queue: string;
-    content: Buffer;
-    options?: amqplib.Options.Publish;
-    resolve: (result: boolean) => void;
-    reject: (err: Error) => void;
-    timeout?: NodeJS.Timeout;
-    isTimedout: boolean;
-}
-
-export interface PublishOptions extends Options.Publish {
-    /** Message will be rejected after timeout ms */
-    timeout?: number;
-}
-
-export interface ConsumerOptions extends amqplib.Options.Consume {
-    prefetch?: number;
-}
-
-export interface Consumer {
-    consumerTag: string | null;
-    queue: string;
-    onMessage: (msg: amqplib.ConsumeMessage) => void;
-    options: ConsumerOptions;
-}
-
-type Message = PublishMessage | SendToQueueMessage;
-
-const IRRECOVERABLE_ERRORS = [
-    403, // AMQP Access Refused Error.
-    404, // AMQP Not Found Error.
-    406, // AMQP Precondition Failed Error.
-    501, // AMQP Frame Error.
-    502, // AMQP Frame Syntax Error.
-    503, // AMQP Invalid Command Error.
-    504, // AMQP Channel Not Open Error.
-    505, // AMQP Unexpected Frame.
-    530, // AMQP Not Allowed Error.
-    540, // AMQP Not Implemented Error.
-    541, // AMQP Internal Error.
-];
-
-/**
- * Calls to `publish()` or `sendToQueue()` work just like in amqplib, but messages are queued internally and
- * are guaranteed to be delivered.  If the underlying connection drops, ChannelWrapper will wait for a new
- * connection and continue.
- *
- * Events:
- * * `connect` - emitted every time this channel connects or reconnects.
- * * `error(err, {name})` - emitted if an error occurs setting up the channel.
- * * `drop({message, err})` - called when a JSON message was dropped because it could not be encoded.
- * * `close` - emitted when this channel closes via a call to `close()`
- *
- */
-export default class ChannelWrapper extends EventEmitter {
+export default class ChannelWrapper extends EventEmitter implements IChannelWrapper {
     private _connectionManager: IAmqpConnectionManager;
-    private _json: boolean;
+    private readonly _json: boolean;
 
-    /** If we're in the process of creating a channel, this is a Promise which
-     * will resolve when the channel is set up.  Otherwise, this is `null`.
-     */
     private _settingUp: Promise<void> | undefined = undefined;
     private _setups: SetupFunc[];
-    /** Queued messages, not yet sent. */
-    private _messages: Message[] = [];
-    /** Oublished, but not yet confirmed messages. */
-    private _unconfirmedMessages: Message[] = [];
-    /** Reason code during publish or sendtoqueue messages. */
+    private _messages: AmqpMessage[] = [];
+    private _unconfirmedMessages: AmqpMessage[] = [];
     private _irrecoverableCode: number | undefined;
-    /** Consumers which will be reconnected on channel errors etc. */
     private _consumers: Consumer[] = [];
 
-    /**
-     * The currently connected channel.  Note that not all setup functions
-     * have been run on this channel until `@_settingUp` is either null or
-     * resolved.
-     */
     private _channel?: Channel;
-
-    /**
-     * True to create a ConfirmChannel. False to create a regular Channel.
-     */
     private _confirm = true;
-    /**
-     * True if the "worker" is busy sending messages.  False if we need to
-     * start the worker to get stuff done.
-     */
     private _working = false;
 
-    /**
-     *  We kill off workers when we disconnect.  Whenever we start a new
-     * worker, we bump up the `_workerNumber` - this makes it so if stale
-     * workers ever do wake up, they'll know to stop working.
-     */
     private _workerNumber = 0;
-
-    /**
-     * True if the underlying channel has room for more messages.
-     */
     private _channelHasRoom = true;
-
-    /**
-     * Default publish timeout
-     */
-    private _publishTimeout?: number;
+    private readonly _publishTimeout?: number;
 
     public name?: string;
 
@@ -205,26 +78,6 @@ export default class ChannelWrapper extends EventEmitter {
         return super.prependOnceListener(event, listener);
     }
 
-    /**
-     *  Adds a new 'setup handler'.
-     *
-     * `setup(channel, [cb])` is a function to call when a new underlying channel is created - handy for asserting
-     * exchanges and queues exists, and whatnot.  The `channel` object here is a ConfigChannel from amqplib.
-     * The `setup` function should return a Promise (or optionally take a callback) - no messages will be sent until
-     * this Promise resolves.
-     *
-     * If there is a connection, `setup()` will be run immediately, and the addSetup Promise/callback won't resolve
-     * until `setup` is complete.  Note that in this case, if the setup throws an error, no 'error' event will
-     * be emitted, since you can just handle the error here (although the `setup` will still be added for future
-     * reconnects, even if it throws an error.)
-     *
-     * Setup functions should, ideally, not throw errors, but if they do then the ChannelWrapper will emit an 'error'
-     * event.
-     *
-     * @param setup - setup function.
-     * @param [done] - callback.
-     * @returns - Resolves when complete.
-     */
     addSetup(setup: SetupFunc, done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(
             done,
@@ -239,17 +92,6 @@ export default class ChannelWrapper extends EventEmitter {
         );
     }
 
-    /**
-     * Remove a setup function added with `addSetup`.  If there is currently a
-     * connection, `teardown(channel, [cb])` will be run immediately, and the
-     * returned Promise will not resolve until it completes.
-     *
-     * @param {function} setup - the setup function to remove.
-     * @param {function} [teardown] - `function(channel, [cb])` to run to tear
-     *   down the channel.
-     * @param {function} [done] - Optional callback.
-     * @returns {void | Promise} - Resolves when complete.
-     */
     removeSetup(setup: SetupFunc, teardown?: SetupFunc, done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(done, () => {
             this._setups = this._setups.filter((s) => s !== setup);
@@ -260,13 +102,6 @@ export default class ChannelWrapper extends EventEmitter {
         });
     }
 
-    /**
-     * Returns a Promise which resolves when this channel next connects.
-     * (Mainly here for unit testing...)
-     *
-     * @param [done] - Optional callback.
-     * @returns - Resolves when connected.
-     */
     waitForConnect(done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(
             done,
@@ -276,17 +111,6 @@ export default class ChannelWrapper extends EventEmitter {
         );
     }
 
-    /*
-     * Publish a message to the channel.
-     *
-     * This works just like amqplib's `publish()`, except if the channel is not
-     * connected, this will wait until the channel is connected.  Returns a
-     * Promise which will only resolve when the message has been succesfully sent.
-     * The returned promise will be rejected if `close()` is called on this
-     * channel before it can be sent, if `options.json` is set and the message
-     * can't be encoded, or if the broker rejects the message for some reason.
-     *
-     */
     publish(
         exchange: string,
         routingKey: string,
@@ -307,7 +131,7 @@ export default class ChannelWrapper extends EventEmitter {
                         resolve,
                         reject,
                         options: opts,
-                        isTimedout: false,
+                        isTimedOut: false,
                     },
                     timeout || this._publishTimeout
                 );
@@ -316,15 +140,6 @@ export default class ChannelWrapper extends EventEmitter {
         );
     }
 
-    /*
-     * Send a message to a queue.
-     *
-     * This works just like amqplib's `sendToQueue`, except if the channel is not connected, this will wait until the
-     * channel is connected.  Returns a Promise which will only resolve when the message has been succesfully sent.
-     * The returned promise will be rejected only if `close()` is called on this channel before it can be sent.
-     *
-     * `message` here should be a JSON-able object.
-     */
     sendToQueue(
         queue: string,
         content: Buffer | string | unknown,
@@ -345,7 +160,7 @@ export default class ChannelWrapper extends EventEmitter {
                         resolve,
                         reject,
                         options: opts,
-                        isTimedout: false,
+                        isTimedOut: false,
                     },
                     timeout || this._publishTimeout
                 );
@@ -354,7 +169,7 @@ export default class ChannelWrapper extends EventEmitter {
         );
     }
 
-    private _enqueueMessage(message: Message, timeout?: number) {
+    private _enqueueMessage(message: AmqpMessage, timeout?: number) {
         if (timeout) {
             message.timeout = setTimeout(() => {
                 let idx = this._messages.indexOf(message);
@@ -366,28 +181,14 @@ export default class ChannelWrapper extends EventEmitter {
                         this._unconfirmedMessages.splice(idx, 1);
                     }
                 }
-                message.isTimedout = true;
+                message.isTimedOut = true;
                 message.reject(new Error('timeout'));
             }, timeout);
         }
         this._messages.push(message);
     }
 
-    /**
-     * Create a new ChannelWrapper.
-     *
-     * @param connectionManager - connection manager which
-     *   created this channel.
-     * @param [options] -
-     * @param [options.name] - A name for this channel.  Handy for debugging.
-     * @param [options.setup] - A default setup function to call.  See
-     *   `addSetup` for details.
-     * @param [options.json] - if true, then ChannelWrapper assumes all
-     *   messages passed to `publish()` and `sendToQueue()` are plain JSON objects.
-     *   These will be encoded automatically before being sent.
-     *
-     */
-    constructor(connectionManager: IAmqpConnectionManager, options: CreateChannelOpts = {}) {
+    constructor(connectionManager: IAmqpConnectionManager, options: CreateChannelOptions = {}) {
         super();
         this._onConnect = this._onConnect.bind(this);
         this._onDisconnect = this._onDisconnect.bind(this);
@@ -414,8 +215,7 @@ export default class ChannelWrapper extends EventEmitter {
         connectionManager.on('disconnect', this._onDisconnect);
     }
 
-    // Called whenever we connect to the broker.
-    private async _onConnect({ connection }: { connection: amqplib.Connection }): Promise<void> {
+    private async _onConnect({ connection }: { connection: Connection }): Promise<void> {
         this._irrecoverableCode = undefined;
 
         try {
@@ -436,7 +236,6 @@ export default class ChannelWrapper extends EventEmitter {
                     // TODO: Use a timeout here to guard against setupFns that never resolve?
                     pb.call(setupFn, this, channel).catch((err) => {
                         if (err.name === 'IllegalOperationError') {
-                            // Don't emit an error if setups failed because the channel closed.
                             return;
                         }
                         this.emit('error', err, { name: this.name });
@@ -452,11 +251,9 @@ export default class ChannelWrapper extends EventEmitter {
             await this._settingUp;
 
             if (!this._channel) {
-                // Can happen if channel closes while we're setting up.
                 return;
             }
 
-            // Since we just connected, publish any queued messages
             this._startWorker();
             this.emit('connect');
         } catch (err) {
@@ -466,71 +263,60 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    // Called whenever the channel closes.
     private _onChannelClose(channel: Channel): void {
         if (this._channel === channel) {
             this._channel = undefined;
         }
-        // Wait for another reconnect to create a new channel.
     }
 
-    /** Called whenever the channel drains. */
     private _onChannelDrain(): void {
         this._channelHasRoom = true;
         this._startWorker();
     }
 
-    // Called whenever we disconnect from the AMQP server.
     private _onDisconnect(ex: { err: Error & { code: number } }): void {
         this._irrecoverableCode = ex.err instanceof Error ? ex.err.code : undefined;
         this._channel = undefined;
         this._settingUp = undefined;
 
         // Kill off the current worker.  We never get any kind of error for messages in flight - see
-        // https://github.com/squaremo/amqp.node/issues/191.
+        // https://github.com/squaremo/amqp.node/issues/191. - Jason Walton
         this._working = false;
     }
 
-    // Returns the number of unsent messages queued on this channel.
+
     queueLength(): number {
         return this._messages.length;
     }
 
-    // Destroy this channel.
-    //
-    // Any unsent messages will have their associated Promises rejected.
-    //
-    close(): Promise<void> {
-        return Promise.resolve().then(() => {
-            this._working = false;
-            if (this._messages.length !== 0) {
-                // Reject any unsent messages.
-                this._messages.forEach((message) => {
-                    if (message.timeout) {
-                        clearTimeout(message.timeout);
-                    }
-                    message.reject(new Error('Channel closed'));
-                });
-            }
-            if (this._unconfirmedMessages.length !== 0) {
-                // Reject any unconfirmed messages.
-                this._unconfirmedMessages.forEach((message) => {
-                    if (message.timeout) {
-                        clearTimeout(message.timeout);
-                    }
-                    message.reject(new Error('Channel closed'));
-                });
-            }
 
-            this._connectionManager.removeListener('connect', this._onConnect);
-            this._connectionManager.removeListener('disconnect', this._onDisconnect);
-            const answer = (this._channel && this._channel.close()) || undefined;
-            this._channel = undefined;
-
-            this.emit('close');
-
-            return answer;
-        });
+    async close(): Promise<void> {
+        await Promise.resolve();
+        this._working = false;
+        if (this._messages.length !== 0) {
+            // Reject any unsent messages.
+            this._messages.forEach((message) => {
+                if (message.timeout) {
+                    clearTimeout(message.timeout);
+                }
+                message.reject(new Error('Channel closed'));
+            });
+        }
+        if (this._unconfirmedMessages.length !== 0) {
+            // Reject any unconfirmed messages.
+            this._unconfirmedMessages.forEach((message_2) => {
+                if (message_2.timeout) {
+                    clearTimeout(message_2.timeout);
+                }
+                message_2.reject(new Error('Channel closed'));
+            });
+        }
+        this._connectionManager.removeListener('connect', this._onConnect);
+        this._connectionManager.removeListener('disconnect', this._onDisconnect);
+        const answer = (this._channel && this._channel.close()) || undefined;
+        this._channel = undefined;
+        this.emit('close');
+        return answer;
     }
 
     private _shouldPublish(): boolean {
@@ -539,7 +325,6 @@ export default class ChannelWrapper extends EventEmitter {
         );
     }
 
-    // Start publishing queued messages, if there isn't already a worker doing this.
     private _startWorker(): void {
         if (!this._working && this._shouldPublish()) {
             this._working = true;
@@ -550,15 +335,15 @@ export default class ChannelWrapper extends EventEmitter {
 
     // Define if a message can cause irrecoverable error
     private _canWaitReconnection(): boolean {
-        return !this._irrecoverableCode || !IRRECOVERABLE_ERRORS.includes(this._irrecoverableCode);
+        return !this._irrecoverableCode || !CHANNEL_IRRECOVERABLE_ERRORS.includes(this._irrecoverableCode);
     }
 
-    private _messageResolved(message: Message, result: boolean) {
+    private _messageResolved(message: AmqpMessage, result: boolean) {
         removeUnconfirmedMessage(this._unconfirmedMessages, message);
         message.resolve(result);
     }
 
-    private _messageRejected(message: Message, err: Error) {
+    private _messageRejected(message: AmqpMessage, err: Error) {
         if (!this._channel && this._canWaitReconnection()) {
             // Tried to write to a closed channel.  Leave the message in the queue and we'll try again when
             // we reconnect.
@@ -608,7 +393,7 @@ export default class ChannelWrapper extends EventEmitter {
 
         try {
             // Send messages in batches of 1000 - don't want to starve the event loop.
-            let sendsLeft = MAX_MESSAGES_PER_BATCH;
+            let sendsLeft = CHANNEL_MAX_MESSAGES_PER_BATCH;
             while (this._channelHasRoom && this._messages.length > 0 && sendsLeft > 0) {
                 sendsLeft--;
 
@@ -629,7 +414,7 @@ export default class ChannelWrapper extends EventEmitter {
                                 message.content,
                                 message.options,
                                 (err) => {
-                                    if (message.isTimedout) {
+                                    if (message.isTimedOut) {
                                         return;
                                     }
 
@@ -666,7 +451,7 @@ export default class ChannelWrapper extends EventEmitter {
                                 message.content,
                                 message.options,
                                 (err) => {
-                                    if (message.isTimedout) {
+                                    if (message.isTimedOut) {
                                         return;
                                     }
 
@@ -714,15 +499,11 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /**
-     * Setup a consumer
-     * This consumer will be reconnected on cancellation and channel errors.
-     */
     async consume(
         queue: string,
         onMessage: Consumer['onMessage'],
         options: ConsumerOptions = {}
-    ): Promise<amqplib.Replies.Consume> {
+    ): Promise<Replies.Consume> {
         const consumerTag = options.consumerTag || (await randomBytes(16)).toString('hex');
         const consumer: Consumer = {
             consumerTag: null,
@@ -750,7 +531,7 @@ export default class ChannelWrapper extends EventEmitter {
 
         const { prefetch, ...options } = consumer.options;
         if (typeof prefetch === 'number') {
-            this._channel.prefetch(prefetch, false);
+            await this._channel.prefetch(prefetch, false);
         }
 
         const { consumerTag } = await this._channel.consume(
@@ -786,9 +567,6 @@ export default class ChannelWrapper extends EventEmitter {
         await this._consume(consumer);
     }
 
-    /**
-     * Cancel all consumers
-     */
     async cancelAll(): Promise<void> {
         const consumers = this._consumers;
         this._consumers = [];
@@ -820,28 +598,23 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send an `ack` to the underlying channel. */
-    ack(message: amqplib.Message, allUpTo?: boolean): void {
+    ack(message: Message, allUpTo?: boolean): void {
         this._channel && this._channel.ack(message, allUpTo);
     }
 
-    /** Send an `ackAll` to the underlying channel. */
     ackAll(): void {
         this._channel && this._channel.ackAll();
     }
 
-    /** Send a `nack` to the underlying channel. */
-    nack(message: amqplib.Message, allUpTo?: boolean, requeue?: boolean): void {
+    nack(message: Message, allUpTo?: boolean, requeue?: boolean): void {
         this._channel && this._channel.nack(message, allUpTo, requeue);
     }
 
-    /** Send a `nackAll` to the underlying channel. */
     nackAll(requeue?: boolean): void {
         this._channel && this._channel.nackAll(requeue);
     }
 
-    /** Send a `purgeQueue` to the underlying channel. */
-    async purgeQueue(queue: string): Promise<amqplib.Replies.PurgeQueue> {
+    async purgeQueue(queue: string): Promise<Replies.PurgeQueue> {
         if (this._channel) {
             return await this._channel.purgeQueue(queue);
         } else {
@@ -849,8 +622,7 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `checkQueue` to the underlying channel. */
-    async checkQueue(queue: string): Promise<amqplib.Replies.AssertQueue> {
+    async checkQueue(queue: string): Promise<Replies.AssertQueue> {
         if (this._channel) {
             return await this._channel.checkQueue(queue);
         } else {
@@ -858,11 +630,10 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `assertQueue` to the underlying channel. */
     async assertQueue(
         queue: string,
-        options?: amqplib.Options.AssertQueue
-    ): Promise<amqplib.Replies.AssertQueue> {
+        options?: Options.AssertQueue
+    ): Promise<Replies.AssertQueue> {
         if (this._channel) {
             return await this._channel.assertQueue(queue, options);
         } else {
@@ -870,7 +641,6 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `bindQueue` to the underlying channel. */
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async bindQueue(queue: string, source: string, pattern: string, args?: any): Promise<void> {
         if (this._channel) {
@@ -878,7 +648,6 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `unbindQueue` to the underlying channel. */
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async unbindQueue(queue: string, source: string, pattern: string, args?: any): Promise<void> {
         if (this._channel) {
@@ -886,11 +655,10 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `deleteQueue` to the underlying channel. */
     async deleteQueue(
         queue: string,
         options?: Options.DeleteQueue
-    ): Promise<amqplib.Replies.DeleteQueue> {
+    ): Promise<Replies.DeleteQueue> {
         if (this._channel) {
             return await this._channel.deleteQueue(queue, options);
         } else {
@@ -898,12 +666,11 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `assertExchange` to the underlying channel. */
     async assertExchange(
         exchange: string,
         type: 'direct' | 'topic' | 'headers' | 'fanout' | 'match' | string,
         options?: Options.AssertExchange
-    ): Promise<amqplib.Replies.AssertExchange> {
+    ): Promise<Replies.AssertExchange> {
         if (this._channel) {
             return await this._channel.assertExchange(exchange, type, options);
         } else {
@@ -911,14 +678,13 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `bindExchange` to the underlying channel. */
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async bindExchange(
         destination: string,
         source: string,
         pattern: string,
         args?: any
-    ): Promise<amqplib.Replies.Empty> {
+    ): Promise<Replies.Empty> {
         if (this._channel) {
             return await this._channel.bindExchange(destination, source, pattern, args);
         } else {
@@ -926,8 +692,7 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `checkExchange` to the underlying channel. */
-    async checkExchange(exchange: string): Promise<amqplib.Replies.Empty> {
+    async checkExchange(exchange: string): Promise<Replies.Empty> {
         if (this._channel) {
             return await this._channel.checkExchange(exchange);
         } else {
@@ -935,11 +700,10 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `deleteExchange` to the underlying channel. */
     async deleteExchange(
         exchange: string,
         options?: Options.DeleteExchange
-    ): Promise<amqplib.Replies.Empty> {
+    ): Promise<Replies.Empty> {
         if (this._channel) {
             return await this._channel.deleteExchange(exchange, options);
         } else {
@@ -947,14 +711,13 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `unbindExchange` to the underlying channel. */
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async unbindExchange(
         destination: string,
         source: string,
         pattern: string,
         args?: any
-    ): Promise<amqplib.Replies.Empty> {
+    ): Promise<Replies.Empty> {
         if (this._channel) {
             return await this._channel.unbindExchange(destination, source, pattern, args);
         } else {
@@ -962,8 +725,7 @@ export default class ChannelWrapper extends EventEmitter {
         }
     }
 
-    /** Send a `get` to the underlying channel. */
-    async get(queue: string, options?: Options.Get): Promise<amqplib.GetMessage | false> {
+    async get(queue: string, options?: Options.Get): Promise<GetMessage | false> {
         if (this._channel) {
             return await this._channel.get(queue, options);
         } else {
@@ -972,7 +734,7 @@ export default class ChannelWrapper extends EventEmitter {
     }
 }
 
-function removeUnconfirmedMessage(arr: Message[], message: Message) {
+function removeUnconfirmedMessage(arr: AmqpMessage[], message: AmqpMessage) {
     const toRemove = arr.indexOf(message);
     if (toRemove === -1) {
         throw new Error(`Message is not in _unconfirmedMessages!`);

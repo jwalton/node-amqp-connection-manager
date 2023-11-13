@@ -1,45 +1,21 @@
-/* eslint-disable @typescript-eslint/no-namespace */
-import AmqpConnectionManager, {
-    AmqpConnectionManagerOptions,
-    ConnectionUrl,
-    IAmqpConnectionManager,
-} from './AmqpConnectionManager.js';
-import CW, { PublishOptions } from './ChannelWrapper.js';
+import AmqpConnectionManager from "./AmqpConnectionManager";
+import {AmqpConnectionManagerOptions} from "./decorate";
 
-export type {
-    AmqpConnectionManagerOptions,
-    ConnectionUrl,
-    IAmqpConnectionManager as AmqpConnectionManager,
-} from './AmqpConnectionManager.js';
-export type { CreateChannelOpts, SetupFunc, Channel } from './ChannelWrapper.js';
-export type ChannelWrapper = CW;
-
-import { Options as AmqpLibOptions } from 'amqplib';
-
-export namespace Options {
-    export type Connect = AmqpLibOptions.Connect;
-    export type AssertQueue = AmqpLibOptions.AssertQueue;
-    export type DeleteQueue = AmqpLibOptions.DeleteQueue;
-    export type AssertExchange = AmqpLibOptions.AssertExchange;
-    export type DeleteExchange = AmqpLibOptions.DeleteExchange;
-    export type Publish = PublishOptions;
-    export type Consume = AmqpLibOptions.Consume;
-    export type Get = AmqpLibOptions.Get;
-}
-
-export function connect(
-    urls: ConnectionUrl | ConnectionUrl[] | undefined | null,
-    options?: AmqpConnectionManagerOptions
-): IAmqpConnectionManager {
+/**
+ * Connect and maintain to the RabbitMQ System
+ * @since 1.0.0
+ * @description Connects to the RabbitMQ Instance and will maintain to the RabbitMQ System.
+ * That is if it does not fail off.
+ * @param urls {any} A string of the URL to the RabbitMQ Server or an Array
+ * @param options {AmqpConnectionManagerOptions} Options for the connection.
+ * @returns {Promise<AmqpConnectionManager>}
+ */
+const connect = async (urls: any, options?: AmqpConnectionManagerOptions): Promise<AmqpConnectionManager> => {
     const conn = new AmqpConnectionManager(urls, options);
-    conn.connect().catch(() => {
+    await conn.connect().catch(() => {
         /* noop */
     });
     return conn;
 }
 
-export { AmqpConnectionManager as AmqpConnectionManagerClass };
-
-const amqp = { connect };
-
-export default amqp;
+export const amqp  = { connect }

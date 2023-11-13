@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+
 import { expect } from 'chai';
-import amqp, { AmqpConnectionManagerClass as AmqpConnectionManager } from '../src';
+import {amqp} from "../src";
+import AmqpConnectionManager from "../src/AmqpConnectionManager";
 
 describe('import test', function () {
     it('should let you import as default (#51)', function () {
