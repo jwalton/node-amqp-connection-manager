@@ -5,7 +5,7 @@ import chai from 'chai';
 import chaiJest from 'chai-jest';
 import { once } from 'events';
 import { defer, timeout } from 'promise-tools';
-import {amqp} from "../src";
+import amqp from "../src";
 import AmqpConnectionManager from "../src/AmqpConnectionManager";
 import {IAmqpConnectionManager} from "../src/decorate";
 
@@ -20,50 +20,61 @@ describe('Integration tests', () => {
         await connection?.close();
     });
 
-    it.skip('should connect to the broker', async () => {
-        // Create a new connection manager
-        connection = await amqp.connect(['amqp://localhost']);
-        await timeout(once(connection, 'connect'), 3000);
-    });
+    describe('basic broker connection tests', () => {
 
-    it.skip('should connect to the broker with a username and password', async () => {
-        // Create a new connection manager
-        connection = await amqp.connect(['amqp://guest:guest@localhost:5672']);
-        await timeout(once(connection, 'connect'), 3000);
-    });
-
-    it.skip('should connect to the broker with a string', async () => {
-        // Create a new connection manager
-        connection = await amqp.connect('amqp://guest:guest@localhost:5672');
-        await timeout(once(connection, 'connect'), 3000);
-    });
-
-    it.skip('should connect to the broker with a amqp.Connect object', async () => {
-        // Create a new connection manager
-        connection = await amqp.connect({
-            protocol: 'amqp',
-            hostname: 'localhost',
-            port: 5672,
-            vhost: '/',
+        it('... as a string', async () => {
+            connection = await amqp.connect('amqp://localhost');
+            timeout(once(connection, 'connect'), 3000);
+            expect(connection.isConnected()).to.be.true
         });
-        await timeout(once(connection, 'connect'), 3000);
-    });
 
-    it.skip('should connect to the broker with an url/options object', async () => {
-        // Create a new connection manager
-        connection = await amqp.connect({
-            url: 'amqp://guest:guest@localhost:5672',
+        it('... as an array', async () => {
+            connection = await amqp.connect(['amqp://localhost']);
+            timeout(once(connection, 'connect'), 3000);
+            expect(connection.isConnected()).to.be.true
         });
-        await timeout(once(connection, 'connect'), 3000);
-    });
 
-    it.skip('should connect to the broker with a string with options', async () => {
-        // Create a new connection manager
-        connection = await amqp.connect(
-            'amqp://guest:guest@localhost:5672/%2F?heartbeat=10&channelMax=100'
-        );
-        await timeout(once(connection, 'connect'), 3000);
-    });
+        it('... array with a username and password', async () => {
+            connection = await amqp.connect(['amqp://guest:guest@localhost:5672']);
+            timeout(once(connection, 'connect'), 3000);
+            expect(connection.isConnected()).to.be.true;
+        });
+
+        it('... complex string', async () => {
+            connection = await amqp.connect('amqp://guest:guest@localhost:5672');
+            timeout(once(connection, 'connect'), 3000);
+            expect(connection.isConnected()).to.be.true;
+        });
+
+        it('... with a amqp.Connect object', async () => {
+            // Create a new connection manager
+            connection = await amqp.connect({
+                protocol: 'amqp',
+                hostname: 'localhost',
+                port: 5672,
+                vhost: '/',
+            });
+            timeout(once(connection, 'connect'), 3000);
+            expect(connection.isConnected()).to.be.true;
+        });
+
+        it('... with an url/options object', async () => {
+            // Create a new connection manager
+            connection = await amqp.connect({
+                url: 'amqp://guest:guest@localhost:5672',
+            });
+            timeout(once(connection, 'connect'), 3000);
+        });
+
+        it('... with a string with options', async () => {
+            // Create a new connection manager
+            connection = await amqp.connect(
+              'amqp://guest:guest@localhost:5672/%2F?heartbeat=10&channelMax=100'
+            );
+            timeout(once(connection, 'connect'), 3000);
+        });
+
+    })
 
     // This test might cause jest to complain about leaked resources due to the bug described and fixed by:
     // https://github.com/squaremo/amqp.node/pull/584
