@@ -155,6 +155,19 @@ export interface IChannelWrapper {
 
 }
 
+type AmqpConnection = {
+  url: string
+}
+
+export type ConnectionUrl =
+  | Options.Connect
+  | Options.Connect[]
+  | AmqpConnection
+  | AmqpConnection[]
+  | string[]
+  | string
+  | null
+
 export type Channel = amqplib.ConfirmChannel | amqplib.Channel;
 
 export type SetupFunc =
