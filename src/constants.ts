@@ -8,7 +8,7 @@ import {promisify} from "util";
  * @since 1.0.0
  * @returns number
  */
-export const AMQP_MANAGER_HEARTBEAT_IN_SECONDS = process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test' ? 5 : 0;
+export const AMQP_MANAGER_HEARTBEAT_IN_SECONDS = process.env.NODE_ENV !== 'test' ? 5 : 0;
 
 /**
  * The max messages to send by default. Currently set at 1000. Can be overridden.
