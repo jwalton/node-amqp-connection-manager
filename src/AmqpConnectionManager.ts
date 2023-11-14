@@ -225,7 +225,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
                 this._urls = [this._urls]
             }
 
-            if (!this._urls || this._urls.length == 0) {
+            if (Array.isArray(this._urls ) && this._urls.length == 0) {
                 throw new Error('amqp-connection-manager: No servers found');
             }
 
