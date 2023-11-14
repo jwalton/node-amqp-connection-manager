@@ -120,6 +120,12 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     }
 
     async connect({timeout}: { timeout?: number } = {}): Promise<void> {
+
+        // if timeout is not set, check to see if it's set during the connection options, if so, set it.
+        if (!timeout && this.connectionOptions?.timeout) {
+            timeout = this.connectionOptions?.timeout
+        }
+
         void this._connect();
 
         let reject: (reason?: any) => void;

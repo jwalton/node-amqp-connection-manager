@@ -351,6 +351,20 @@ describe('AmqpConnectionManager', function () {
     expect(err.message).to.equal('amqp-connection-manager: connect timeout');
   });
 
+  it('should timeout connect, via connectionOptions', async () => {
+    jest.spyOn(origAmqp, 'connect').mockImplementation((): any => {
+      return promiseTools.delay(200);
+    });
+    amqp = new AmqpConnectionManager('amqp://localhost', { connectionOptions: {timeout: 0.1}});
+    let err;
+    try {
+      await amqp.connect();
+    } catch (error: any) {
+      err = error;
+    }
+    expect(err.message).to.equal('amqp-connection-manager: connect timeout');
+  });
+
   it('should know if it is connected or not', async () => {
     amqp = new AmqpConnectionManager('amqp://localhost');
     amqp.connect();
