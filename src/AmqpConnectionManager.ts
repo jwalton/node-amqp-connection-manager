@@ -68,11 +68,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
         this._channels = [];
         this._currentUrl = 0;
 
-        if (Array.isArray(urls)) {
-            this._urls = urls;
-        } else if (urls) {
-            this._urls = [urls];
-        }
+        this._urls = urls;
 
         this.heartbeatIntervalInSeconds = options.connectionOptions?.heartbeatIntervalInSeconds || options.connectionOptions?.heartbeatIntervalInSeconds === 0 ? options.connectionOptions?.heartbeatIntervalInSeconds : AMQP_MANAGER_HEARTBEAT_IN_SECONDS;
         this.reconnectTimeInSeconds = options.connectionOptions?.reconnectTimeInSeconds || this.heartbeatIntervalInSeconds;
@@ -211,15 +207,23 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
 
     private async _connect (): Promise<null | void> {
 
-        this._connectPromise = Promise.resolve()
-
-        if (!this._urls) {
-            this._currentUrl = 0;
-            const urlProcess = await pb.call(this._findServers, 0, null);
-            this._urls = Array.isArray(urlProcess) ? [...urlProcess] : (urlProcess ? [urlProcess]: undefined)
-        }
-
         try {
+
+            this._connectPromise = Promise.resolve()
+
+            if (!this._urls) {
+                this._currentUrl = 0;
+                this._urls = await pb.call(this._findServers, 0, null)
+            }
+
+            // by this time it should be set...
+            if (!this._urls) {
+                throw new Error('amqp-connection-manager: No servers found');
+            }
+
+            if (!Array.isArray(this._urls )) {
+                this._urls = [this._urls]
+            }
 
             if (!this._urls || this._urls.length == 0) {
                 throw new Error('amqp-connection-manager: No servers found');
