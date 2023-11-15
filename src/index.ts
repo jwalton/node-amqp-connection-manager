@@ -12,14 +12,12 @@ import {ChannelWrapper, CreateChannelOptions} from "./decorate";
  */
 const connect = async (urls: ConnectionUrl, options?: AmqpConnectionManagerOptions): Promise<AmqpConnectionManager> => {
   const conn = new AmqpConnectionManager(urls, options);
-  await conn.connect().catch(() => {
-    /* noop */
-  });
+  await conn.connect()
   return conn;
 }
 
 const amqp = {connect};
 
-export {AmqpConnectionManager, ChannelWrapper, AmqpConnectionManagerOptions, CreateChannelOptions}
+export {AmqpConnectionManager, AmqpConnectionManagerOptions, ChannelWrapper, CreateChannelOptions}
 
 export default amqp;
