@@ -11,6 +11,18 @@
             "import": "./dist/esm/index.js",
             "require": "./dist/cjs/index.js",
             "default": "./dist/cjs/index.js"
+        },
+        "./ChannelWrapper": {
+            "types": "./dist/types/ChannelWrapper.d.ts",
+            "import": "./dist/esm/ChannelWrapper.js",
+            "require": "./dist/cjs/ChannelWrapper.js",
+            "default": "./dist/cjs/ChannelWrapper.js"
+        },
+        "./AmqpConnectionManager": {
+            "types": "./dist/types/AmqpConnectionManager.d.ts",
+            "import": "./dist/esm/AmqpConnectionManager.js",
+            "require": "./dist/cjs/AmqpConnectionManager.js",
+            "default": "./dist/cjs/AmqpConnectionManager.js"
         }
     },
     "files": [
