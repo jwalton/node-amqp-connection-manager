@@ -67,6 +67,9 @@ interface SendToQueueMessage {
 export interface PublishOptions extends Options.Publish {
     /** Message will be rejected after timeout ms */
     timeout?: number;
+    
+    /** Message will be discarded from a queue after expiration ms */
+    expiration?: number;
 }
 
 export interface ConsumerOptions extends amqplib.Options.Consume {
