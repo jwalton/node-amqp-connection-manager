@@ -131,7 +131,7 @@ export interface IAmqpConnectionManager {
     isConnected(): boolean;
 
     /** The current connection. */
-    readonly connection: amqp.Connection | undefined;
+    readonly connection: amqp.ChannelModel | undefined;
 
     /** Returns the number of registered channels. */
     readonly channelCount: number;
