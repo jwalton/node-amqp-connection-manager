@@ -1,3 +1,13 @@
+# [5.0.0](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.15...v5.0.0) (2025-09-29)
+
+### Continuous Integration
+
+- Stop testing on earlier than node 20. ([fbccec7](https://github.com/jwalton/node-amqp-connection-manager/commit/fbccec773b311b309698de0a0b5247483630be8a))
+
+### BREAKING CHANGES
+
+- Minimum supported node is now v20 (but may work on older node versions).
+
 ## [4.1.14](https://github.com/jwalton/node-amqp-connection-manager/compare/v4.1.13...v4.1.14) (2023-07-27)
 
 ### Bug Fixes
