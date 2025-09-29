@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import { Connection, Message, Options, Replies } from 'amqplib';
+import { ChannelModel, Message, Options, Replies } from 'amqplib';
 import { EventEmitter, once } from 'events';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
 import ChannelWrapper, { CreateChannelOpts } from '../src/ChannelWrapper';
 
 export class FakeAmqp {
-    public connection: Connection | undefined;
+    public connection: ChannelModel | undefined;
     public url: string | undefined;
     public failConnections = false;
     public deadServers: string[] = [];
-    public connect: (url: string) => Promise<Connection> = async () => {
+    public connect: (url: string) => Promise<ChannelModel> = async () => {
         throw new Error('Not setup');
     };
 
@@ -270,7 +270,7 @@ export class FakeAmqpConnectionManager extends EventEmitter implements IAmqpConn
     }
 
     get connection() {
-        return this._connection as any as Connection | undefined;
+        return this._connection as any as ChannelModel | undefined;
     }
 
     get channelCount(): number {

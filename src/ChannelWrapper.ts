@@ -415,7 +415,7 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     // Called whenever we connect to the broker.
-    private async _onConnect({ connection }: { connection: amqplib.Connection }): Promise<void> {
+    private async _onConnect({ connection }: { connection: amqplib.ChannelModel }): Promise<void> {
         this._irrecoverableCode = undefined;
 
         try {

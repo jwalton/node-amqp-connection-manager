@@ -79,7 +79,7 @@ function neverThrows() {
         });
 }
 
-export interface IAmqpConnectionManager {
+export interface IAmqpConnectionManager extends EventEmitter {
     connectionOptions?: AmqpConnectionOptions;
     heartbeatIntervalInSeconds: number;
     reconnectTimeInSeconds: number;
@@ -131,7 +131,7 @@ export interface IAmqpConnectionManager {
     isConnected(): boolean;
 
     /** The current connection. */
-    readonly connection: amqp.Connection | undefined;
+    readonly connection: amqp.ChannelModel | undefined;
 
     /** Returns the number of registered channels. */
     readonly channelCount: number;
@@ -151,7 +151,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     private _closed = false;
     private _cancelRetriesHandler?: () => void;
     private _connectPromise?: Promise<null>;
-    private _currentConnection?: amqp.Connection;
+    private _currentConnection?: amqp.ChannelModel;
     private _findServers:
         | ((callback: (urls: ConnectionUrl | ConnectionUrl[]) => void) => void)
         | (() => Promise<ConnectionUrl | ConnectionUrl[]>);
@@ -322,7 +322,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     }
 
     /** The current connection. */
-    get connection(): amqp.Connection | undefined {
+    get connection(): amqp.ChannelModel | undefined {
         return this._currentConnection;
     }
 
