@@ -161,6 +161,31 @@ describe('ChannelWrapper', function () {
         return channelWrapper.waitForConnect().then(() => channelWrapper.waitForConnect());
     });
 
+    it('should reject waitForConnect if initial connection fails', async function () {
+        const channelWrapper = new ChannelWrapper(connectionManager);
+
+        const waitPromise = channelWrapper.waitForConnect();
+        connectionManager.simulateConnectFailed(new Error('No route to host'));
+
+        await expect(waitPromise).to.be.rejectedWith('No route to host');
+    });
+
+    it('should pass initial connection failures to waitForConnect callback', function (done: any) {
+        const channelWrapper = new ChannelWrapper(connectionManager);
+
+        channelWrapper.waitForConnect((err) => {
+            try {
+                expect(err).to.be.an('error');
+                expect(err?.message).to.equal('No route to host');
+                done();
+            } catch (error: any) {
+                done(error);
+            }
+        });
+
+        connectionManager.simulateConnectFailed(new Error('No route to host'));
+    });
+
     it('should run setup functions immediately if already connected', async function () {
         const setup1 = jest.fn().mockImplementation(() => promiseTools.delay(10));
         const setup2 = jest.fn().mockImplementation(() => promiseTools.delay(10));
@@ -585,7 +610,6 @@ describe('ChannelWrapper', function () {
             channelWrapper.checkExchange('fish');
             expect(channel.checkExchange).to.have.beenCalledTimes(1);
             expect(channel.checkExchange).to.have.beenCalledWith('fish');
-            
         });
     });
 
@@ -607,7 +631,7 @@ describe('ChannelWrapper', function () {
             channelWrapper.bindQueue('dog', 'bone', 'legs');
             expect(channel.bindQueue).to.have.beenCalledTimes(1);
             expect(channel.bindQueue).to.have.beenCalledWith('dog', 'bone', 'legs', undefined);
-            
+
             channelWrapper.unbindQueue('dog', 'bone', 'legs');
             expect(channel.unbindQueue).to.have.beenCalledTimes(1);
             expect(channel.unbindQueue).to.have.beenCalledWith('dog', 'bone', 'legs', undefined);

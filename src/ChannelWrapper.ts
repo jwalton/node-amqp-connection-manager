@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
 import { promisify } from 'util';
-import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
+import { type ConnectFailedListener, IAmqpConnectionManager } from './AmqpConnectionManager.js';
 
 const MAX_MESSAGES_PER_BATCH = 1000;
 
@@ -262,17 +262,44 @@ export default class ChannelWrapper extends EventEmitter {
 
     /**
      * Returns a Promise which resolves when this channel next connects.
-     * (Mainly here for unit testing...)
+     *
+     * This Promise is also rejected if the connection manager emits
+     * `connectFailed` before a successful channel connect.
      *
      * @param [done] - Optional callback.
-     * @returns - Resolves when connected.
+     * @returns - Resolves when connected, rejects on initial connection failure.
      */
     waitForConnect(done?: pb.Callback<void>): Promise<void> {
         return pb.addCallback(
             done,
             this._channel && !this._settingUp
                 ? Promise.resolve()
-                : new Promise((resolve) => this.once('connect', resolve))
+                : new Promise<void>((resolve, reject) => {
+                      const onConnect = () => {
+                          cleanup();
+                          resolve();
+                      };
+
+                      const onConnectFailed: ConnectFailedListener = ({ err }) => {
+                          cleanup();
+                          reject(err);
+                      };
+
+                      const onClose = () => {
+                          cleanup();
+                          reject(new Error('Channel closed before connect'));
+                      };
+
+                      const cleanup = () => {
+                          this.off('connect', onConnect);
+                          this.off('close', onClose);
+                          this._connectionManager.off('connectFailed', onConnectFailed);
+                      };
+
+                      this.on('connect', onConnect);
+                      this.on('close', onClose);
+                      this._connectionManager.on('connectFailed', onConnectFailed);
+                  })
         );
     }
 

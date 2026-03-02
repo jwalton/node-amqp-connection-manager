@@ -317,5 +317,14 @@ export class FakeAmqpConnectionManager extends EventEmitter implements IAmqpConn
         });
     }
 
+    simulateConnectFailed(err: Error = new Error('Connection failed')) {
+        this._connection = undefined;
+        this.connected = false;
+        this.emit('connectFailed', {
+            err,
+            url: 'amqp://localhost',
+        });
+    }
+
     async close() {}
 }
