@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-
 import { ChannelModel, Message, Options, Replies } from 'amqplib';
 import { EventEmitter, once } from 'events';
 import { vi } from 'vitest';
-import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
+import { ConnectionManagerEvents, IAmqpConnectionManager } from '../src/AmqpConnectionManager';
 import ChannelWrapper, { CreateChannelOpts } from '../src/ChannelWrapper';
+import TypedEventEmitter from 'typed-emitter';
 
 export class FakeAmqp {
     public connection: ChannelModel | undefined;
@@ -102,93 +100,79 @@ export class FakeChannel extends EventEmitter {
 
     nackAll = vi.fn().mockImplementation(function (_requeue?: boolean): void {});
 
-    assertQueue = vi
-        .fn()
-        .mockImplementation(async function (
-            queue: string,
-            _options?: Options.AssertQueue
-        ): Promise<Replies.AssertQueue> {
-            return {
-                queue,
-                messageCount: 0,
-                consumerCount: 0,
-            };
-        });
+    assertQueue = vi.fn().mockImplementation(async function (
+        queue: string,
+        _options?: Options.AssertQueue
+    ): Promise<Replies.AssertQueue> {
+        return {
+            queue,
+            messageCount: 0,
+            consumerCount: 0,
+        };
+    });
 
-    checkQueue = vi
-        .fn()
-        .mockImplementation(async function (_queue: string): Promise<Replies.Empty> {
-            return {};
-        });
+    checkQueue = vi.fn().mockImplementation(async function (
+        _queue: string
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
-    bindQueue = vi
-        .fn()
-        .mockImplementation(async function (
-            _queue: string,
-            _source: string,
-            _pattern: string,
-            _args?: any
-        ): Promise<Replies.Empty> {
-            return {};
-        });
+    bindQueue = vi.fn().mockImplementation(async function (
+        _queue: string,
+        _source: string,
+        _pattern: string,
+        _args?: any
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
-    unbindQueue = vi
-        .fn()
-        .mockImplementation(async function (
-            _queue: string,
-            _source: string,
-            _pattern: string,
-            _args?: any
-        ): Promise<Replies.Empty> {
-            return {};
-        });
+    unbindQueue = vi.fn().mockImplementation(async function (
+        _queue: string,
+        _source: string,
+        _pattern: string,
+        _args?: any
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
-    assertExchange = vi
-        .fn()
-        .mockImplementation(async function (
-            exchange: string,
-            _type: 'direct' | 'topic' | 'headers' | 'fanout' | 'match' | string,
-            _options?: Options.AssertExchange
-        ): Promise<Replies.AssertExchange> {
-            return { exchange };
-        });
+    assertExchange = vi.fn().mockImplementation(async function (
+        exchange: string,
+        _type: 'direct' | 'topic' | 'headers' | 'fanout' | 'match' | string,
+        _options?: Options.AssertExchange
+    ): Promise<Replies.AssertExchange> {
+        return { exchange };
+    });
 
-    bindExchange = vi
-        .fn()
-        .mockImplementation(async function (
-            _destination: string,
-            _source: string,
-            _pattern: string,
-            _args?: any
-        ): Promise<Replies.Empty> {
-            return {};
-        });
+    bindExchange = vi.fn().mockImplementation(async function (
+        _destination: string,
+        _source: string,
+        _pattern: string,
+        _args?: any
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
-    checkExchange = vi
-        .fn()
-        .mockImplementation(async function (_exchange: string): Promise<Replies.Empty> {
-            return {};
-        });
+    checkExchange = vi.fn().mockImplementation(async function (
+        _exchange: string
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
-    deleteExchange = vi
-        .fn()
-        .mockImplementation(async function (
-            _exchange: string,
-            _options?: Options.DeleteExchange
-        ): Promise<Replies.Empty> {
-            return {};
-        });
+    deleteExchange = vi.fn().mockImplementation(async function (
+        _exchange: string,
+        _options?: Options.DeleteExchange
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
-    unbindExchange = vi
-        .fn()
-        .mockImplementation(async function (
-            _destination: string,
-            _source: string,
-            _pattern: string,
-            _args?: any
-        ): Promise<Replies.Empty> {
-            return {};
-        });
+    unbindExchange = vi.fn().mockImplementation(async function (
+        _destination: string,
+        _source: string,
+        _pattern: string,
+        _args?: any
+    ): Promise<Replies.Empty> {
+        return {};
+    });
 
     close = vi.fn().mockImplementation(async (): Promise<void> => {
         this.emit('close');
@@ -258,7 +242,10 @@ export class FakeConnection extends EventEmitter {
     }
 }
 
-export class FakeAmqpConnectionManager extends EventEmitter implements IAmqpConnectionManager {
+export class FakeAmqpConnectionManager
+    extends (EventEmitter as new () => TypedEventEmitter<ConnectionManagerEvents>)
+    implements IAmqpConnectionManager
+{
     connected: boolean;
     private _connection: FakeConnection | undefined;
 
@@ -300,14 +287,13 @@ export class FakeAmqpConnectionManager extends EventEmitter implements IAmqpConn
         this._connection = new exports.FakeConnection(url);
         this.connected = true;
         this.emit('connect', {
-            connection: this.connection,
+            connection: this.connection as ChannelModel,
             url,
         });
     }
 
     simulateRemoteCloseEx(err: Error) {
         this.emit('disconnect', { err });
-        this.emit('close', err);
     }
 
     simulateDisconnect() {

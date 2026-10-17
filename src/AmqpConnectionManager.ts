@@ -6,17 +6,16 @@ import { ConnectionOptions } from 'tls';
 import { URL } from 'url';
 import ChannelWrapper, { CreateChannelOpts } from './ChannelWrapper.js';
 import { wait } from './helpers.js';
+import TypedEventEmitter from 'typed-emitter';
 
 // Default heartbeat time.
 const HEARTBEAT_IN_SECONDS = 5;
 
 export type ConnectionUrl =
-    | string
-    | amqp.Options.Connect
-    | { url: string; connectionOptions?: AmqpConnectionOptions };
+    string | amqp.Options.Connect | { url: string; connectionOptions?: AmqpConnectionOptions };
 
 export interface ConnectListener {
-    (arg: { connection: amqp.Connection; url: string | amqp.Options.Connect }): void;
+    (arg: { connection: amqp.ChannelModel; url: string | amqp.Options.Connect }): void;
 }
 
 export interface ConnectFailedListener {
@@ -28,7 +27,7 @@ export type AmqpConnectionOptions = (ConnectionOptions | TcpSocketConnectOpts) &
     timeout?: number;
     keepAlive?: boolean;
     keepAliveDelay?: number;
-    clientProperties?: any;
+    clientProperties?: unknown;
     credentials?:
         | {
               mechanism: string;
@@ -79,50 +78,19 @@ function neverThrows() {
         });
 }
 
-export interface IAmqpConnectionManager extends EventEmitter {
+export type ConnectionManagerEvents = {
+    connect: ConnectListener;
+    connectFailed: ConnectFailedListener;
+    blocked: (arg: { reason: string }) => void;
+    unblocked: () => void;
+    disconnect: (arg: { err: Error & { code?: number } }) => void;
+    error: (err: Error) => void;
+};
+
+export interface IAmqpConnectionManager extends TypedEventEmitter<ConnectionManagerEvents> {
     connectionOptions?: AmqpConnectionOptions;
     heartbeatIntervalInSeconds: number;
     reconnectTimeInSeconds: number;
-
-    addListener(event: string, listener: (...args: any[]) => void): this;
-    addListener(event: 'connect', listener: ConnectListener): this;
-    addListener(event: 'connectFailed', listener: ConnectFailedListener): this;
-    addListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    addListener(event: 'unblocked', listener: () => void): this;
-    addListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    listeners(eventName: string | symbol): Function[];
-
-    on(event: string, listener: (...args: any[]) => void): this;
-    on(event: 'connect', listener: ConnectListener): this;
-    on(event: 'connectFailed', listener: ConnectFailedListener): this;
-    on(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    on(event: 'unblocked', listener: () => void): this;
-    on(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-
-    once(event: string, listener: (...args: any[]) => void): this;
-    once(event: 'connect', listener: ConnectListener): this;
-    once(event: 'connectFailed', listener: ConnectFailedListener): this;
-    once(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    once(event: 'unblocked', listener: () => void): this;
-    once(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-
-    prependListener(event: string, listener: (...args: any[]) => void): this;
-    prependListener(event: 'connect', listener: ConnectListener): this;
-    prependListener(event: 'connectFailed', listener: ConnectFailedListener): this;
-    prependListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    prependListener(event: 'unblocked', listener: () => void): this;
-    prependListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-
-    prependOnceListener(event: string, listener: (...args: any[]) => void): this;
-    prependOnceListener(event: 'connect', listener: ConnectListener): this;
-    prependOnceListener(event: 'connectFailed', listener: ConnectFailedListener): this;
-    prependOnceListener(event: 'blocked', listener: (arg: { reason: string }) => void): this;
-    prependOnceListener(event: 'unblocked', listener: () => void): this;
-    prependOnceListener(event: 'disconnect', listener: (arg: { err: Error }) => void): this;
-
-    removeListener(event: string, listener: (...args: any[]) => void): this;
 
     connect(options?: { timeout?: number }): Promise<void>;
     reconnect(): void;
@@ -145,7 +113,10 @@ export interface IAmqpConnectionManager extends EventEmitter {
 // * `blocked({reason})` - Emitted whenever connection is blocked by a broker.
 // * `unblocked()` - Emitted whenever connection is unblocked by a broker.
 //
-export default class AmqpConnectionManager extends EventEmitter implements IAmqpConnectionManager {
+export default class AmqpConnectionManager
+    extends (EventEmitter as new () => TypedEventEmitter<ConnectionManagerEvents>)
+    implements IAmqpConnectionManager
+{
     private _channels: ChannelWrapper[];
     private _currentUrl: number;
     private _closed = false;
@@ -219,7 +190,7 @@ export default class AmqpConnectionManager extends EventEmitter implements IAmqp
     async connect({ timeout }: { timeout?: number } = {}): Promise<void> {
         this._connect();
 
-        let reject: (reason?: any) => void;
+        let reject: (reason?: unknown) => void;
         const onConnectFailed = ({ err }: { err: Error }) => {
             // Ignore disconnects caused bad credentials.
             if (err.message.includes('ACCESS-REFUSED') || err.message.includes('403')) {

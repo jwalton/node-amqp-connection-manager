@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
-
 import * as amqplib from 'amqplib';
 import chaiAsPromised from 'chai-as-promised';
 import * as promiseTools from 'promise-tools';

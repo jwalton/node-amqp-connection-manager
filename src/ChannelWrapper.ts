@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import pb from 'promise-breaker';
 import { promisify } from 'util';
 import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
+import TypedEventEmitter from 'typed-emitter';
 
 const MAX_MESSAGES_PER_BATCH = 1000;
 
@@ -96,6 +97,12 @@ const IRRECOVERABLE_ERRORS = [
     541, // AMQP Internal Error.
 ];
 
+type ChannelWrapperEvents = {
+    connect: () => void;
+    error: (err: unknown, info: { name: string | undefined }) => void;
+    close: () => void;
+};
+
 /**
  * Calls to `publish()` or `sendToQueue()` work just like in amqplib, but messages are queued internally and
  * are guaranteed to be delivered.  If the underlying connection drops, ChannelWrapper will wait for a new
@@ -108,7 +115,7 @@ const IRRECOVERABLE_ERRORS = [
  * * `close` - emitted when this channel closes via a call to `close()`
  *
  */
-export default class ChannelWrapper extends EventEmitter {
+export default class ChannelWrapper extends (EventEmitter as new () => TypedEventEmitter<ChannelWrapperEvents>) {
     private _connectionManager: IAmqpConnectionManager;
     private _json: boolean;
 
@@ -161,49 +168,6 @@ export default class ChannelWrapper extends EventEmitter {
     private _publishTimeout?: number;
 
     public name?: string;
-
-    addListener(event: string, listener: (...args: any[]) => void): this;
-    addListener(event: 'connect', listener: () => void): this;
-    addListener(event: 'error', listener: (err: Error, info: { name: string }) => void): this;
-    addListener(event: 'close', listener: () => void): this;
-    addListener(event: string, listener: (...args: any[]) => void): this {
-        return super.addListener(event, listener);
-    }
-
-    on(event: string, listener: (...args: any[]) => void): this;
-    on(event: 'connect', listener: () => void): this;
-    on(event: 'error', listener: (err: Error, info: { name: string }) => void): this;
-    on(event: 'close', listener: () => void): this;
-    on(event: string, listener: (...args: any[]) => void): this {
-        return super.on(event, listener);
-    }
-
-    once(event: string, listener: (...args: any[]) => void): this;
-    once(event: 'connect', listener: () => void): this;
-    once(event: 'error', listener: (err: Error, info: { name: string }) => void): this;
-    once(event: 'close', listener: () => void): this;
-    once(event: string, listener: (...args: any[]) => void): this {
-        return super.once(event, listener);
-    }
-
-    prependListener(event: string, listener: (...args: any[]) => void): this;
-    prependListener(event: 'connect', listener: () => void): this;
-    prependListener(event: 'error', listener: (err: Error, info: { name: string }) => void): this;
-    prependListener(event: 'close', listener: () => void): this;
-    prependListener(event: string, listener: (...args: any[]) => void): this {
-        return super.prependListener(event, listener);
-    }
-
-    prependOnceListener(event: string, listener: (...args: any[]) => void): this;
-    prependOnceListener(event: 'connect', listener: () => void): this;
-    prependOnceListener(
-        event: 'error',
-        listener: (err: Error, info: { name: string }) => void
-    ): this;
-    prependOnceListener(event: 'close', listener: () => void): this;
-    prependOnceListener(event: string, listener: (...args: any[]) => void): this {
-        return super.prependOnceListener(event, listener);
-    }
 
     /**
      *  Adds a new 'setup handler'.
@@ -481,7 +445,7 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     // Called whenever we disconnect from the AMQP server.
-    private _onDisconnect(ex: { err: Error & { code: number } }): void {
+    private _onDisconnect(ex: { err: Error & { code?: number } }): void {
         this._irrecoverableCode = ex.err instanceof Error ? ex.err.code : undefined;
         this._channel = undefined;
         this._settingUp = undefined;
@@ -581,8 +545,11 @@ export default class ChannelWrapper extends EventEmitter {
             encodedMessage = Buffer.from(content);
         } else if (content instanceof Buffer) {
             encodedMessage = content;
-        } else if (typeof content === 'object' && typeof (content as any).toString === 'function') {
-            encodedMessage = Buffer.from((content as any).toString());
+        } else if (
+            typeof content === 'object' &&
+            typeof (content as { toString: () => string }).toString === 'function'
+        ) {
+            encodedMessage = Buffer.from((content as { toString: () => string }).toString());
         } else {
             console.warn(
                 'amqp-connection-manager: Sending JSON message, but json option not speicifed'
@@ -696,7 +663,9 @@ export default class ChannelWrapper extends EventEmitter {
                     }
                     /* istanbul ignore next */
                     default:
-                        throw new Error(`Unhandled message type ${(message as any).type}`);
+                        throw new Error(
+                            `Unhandled message type ${(message as { type: unknown }).type}`
+                        );
                 }
             }
 
@@ -710,7 +679,7 @@ export default class ChannelWrapper extends EventEmitter {
             /* istanbul ignore next */
         } catch (err) {
             this._working = false;
-            this.emit('error', err);
+            this.emit('error', err, { name: this.name });
         }
     }
 
@@ -767,7 +736,7 @@ export default class ChannelWrapper extends EventEmitter {
                             // before starting to consume.
                             return;
                         }
-                        this.emit('error', err);
+                        this.emit('error', err, { name: this.name });
                     });
                     return;
                 }
@@ -798,7 +767,7 @@ export default class ChannelWrapper extends EventEmitter {
 
         const channel = this._channel;
         await Promise.all(
-            consumers.reduce<any[]>((acc, consumer) => {
+            consumers.reduce<unknown[]>((acc, consumer) => {
                 if (consumer.consumerTag) {
                     acc.push(channel.cancel(consumer.consumerTag));
                 }
@@ -822,22 +791,22 @@ export default class ChannelWrapper extends EventEmitter {
 
     /** Send an `ack` to the underlying channel. */
     ack(message: amqplib.Message, allUpTo?: boolean): void {
-        this._channel && this._channel.ack(message, allUpTo);
+        this._channel?.ack(message, allUpTo);
     }
 
     /** Send an `ackAll` to the underlying channel. */
     ackAll(): void {
-        this._channel && this._channel.ackAll();
+        this._channel?.ackAll();
     }
 
     /** Send a `nack` to the underlying channel. */
     nack(message: amqplib.Message, allUpTo?: boolean, requeue?: boolean): void {
-        this._channel && this._channel.nack(message, allUpTo, requeue);
+        this._channel?.nack(message, allUpTo, requeue);
     }
 
     /** Send a `nackAll` to the underlying channel. */
     nackAll(requeue?: boolean): void {
-        this._channel && this._channel.nackAll(requeue);
+        this._channel?.nackAll(requeue);
     }
 
     /** Send a `purgeQueue` to the underlying channel. */
@@ -871,16 +840,19 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     /** Send a `bindQueue` to the underlying channel. */
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    async bindQueue(queue: string, source: string, pattern: string, args?: any): Promise<void> {
+    async bindQueue(queue: string, source: string, pattern: string, args?: unknown): Promise<void> {
         if (this._channel) {
             await this._channel.bindQueue(queue, source, pattern, args);
         }
     }
 
     /** Send a `unbindQueue` to the underlying channel. */
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    async unbindQueue(queue: string, source: string, pattern: string, args?: any): Promise<void> {
+    async unbindQueue(
+        queue: string,
+        source: string,
+        pattern: string,
+        args?: unknown
+    ): Promise<void> {
         if (this._channel) {
             await this._channel.unbindQueue(queue, source, pattern, args);
         }
@@ -912,12 +884,11 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     /** Send a `bindExchange` to the underlying channel. */
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async bindExchange(
         destination: string,
         source: string,
         pattern: string,
-        args?: any
+        args?: unknown
     ): Promise<amqplib.Replies.Empty> {
         if (this._channel) {
             return await this._channel.bindExchange(destination, source, pattern, args);
@@ -948,12 +919,11 @@ export default class ChannelWrapper extends EventEmitter {
     }
 
     /** Send a `unbindExchange` to the underlying channel. */
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     async unbindExchange(
         destination: string,
         source: string,
         pattern: string,
-        args?: any
+        args?: unknown
     ): Promise<amqplib.Replies.Empty> {
         if (this._channel) {
             return await this._channel.unbindExchange(destination, source, pattern, args);

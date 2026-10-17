@@ -1,4 +1,4 @@
-import origAmqp from 'amqplib';
+import origAmqp, { Options } from 'amqplib';
 import * as chai from 'chai';
 import { once } from 'events';
 import * as promiseTools from 'promise-tools';
@@ -27,8 +27,9 @@ describe('AmqpConnectionManager', function () {
     let amqp: AmqpConnectionManager | undefined;
 
     beforeEach(() => {
-        vi.spyOn(origAmqp, 'connect').mockImplementation(((url: string) =>
-            amqplib.connect(url)) as any);
+        vi.spyOn(origAmqp, 'connect').mockImplementation((url: string | Options.Connect) =>
+            amqplib.connect(url as string)
+        );
         amqplib.reset();
     });
 
@@ -56,7 +57,7 @@ describe('AmqpConnectionManager', function () {
             protocol: 'amqp',
             hostname: 'localhost',
         });
-        expect((connection as any).url, 'connection.url').to.eql({
+        expect((connection as { url: string }).url, 'connection.url').to.eql({
             protocol: 'amqp',
             hostname: 'localhost',
             heartbeat: 5,
