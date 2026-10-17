@@ -3,6 +3,7 @@
 
 import { ChannelModel, Message, Options, Replies } from 'amqplib';
 import { EventEmitter, once } from 'events';
+import { vi } from 'vitest';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
 import ChannelWrapper, { CreateChannelOpts } from '../src/ChannelWrapper';
 
@@ -42,7 +43,7 @@ export class FakeAmqp {
         this.url = undefined;
         this.failConnections = false;
         this.deadServers = [];
-        this.connect = jest.fn().mockImplementation((url) => {
+        this.connect = vi.fn().mockImplementation((url) => {
             if (this.failConnections) {
                 return Promise.reject(new Error('No'));
             }
@@ -64,7 +65,7 @@ export class FakeAmqp {
 }
 
 export class FakeChannel extends EventEmitter {
-    publish = jest
+    publish = vi
         .fn()
         .mockImplementation(
             (
@@ -78,7 +79,7 @@ export class FakeChannel extends EventEmitter {
             }
         );
 
-    sendToQueue = jest
+    sendToQueue = vi
         .fn()
         .mockImplementation(
             (_queue: string, content: Buffer, _options?: Options.Publish): boolean => {
@@ -87,11 +88,11 @@ export class FakeChannel extends EventEmitter {
             }
         );
 
-    ack = jest.fn().mockImplementation(function (_message: Message, _allUpTo?: boolean): void {});
+    ack = vi.fn().mockImplementation(function (_message: Message, _allUpTo?: boolean): void {});
 
-    ackAll = jest.fn().mockImplementation(function (): void {});
+    ackAll = vi.fn().mockImplementation(function (): void {});
 
-    nack = jest
+    nack = vi
         .fn()
         .mockImplementation(function (
             _message: Message,
@@ -99,9 +100,9 @@ export class FakeChannel extends EventEmitter {
             _requeue?: boolean
         ): void {});
 
-    nackAll = jest.fn().mockImplementation(function (_requeue?: boolean): void {});
+    nackAll = vi.fn().mockImplementation(function (_requeue?: boolean): void {});
 
-    assertQueue = jest
+    assertQueue = vi
         .fn()
         .mockImplementation(async function (
             queue: string,
@@ -114,13 +115,13 @@ export class FakeChannel extends EventEmitter {
             };
         });
 
-    checkQueue = jest
+    checkQueue = vi
         .fn()
         .mockImplementation(async function (_queue: string): Promise<Replies.Empty> {
             return {};
         });
 
-    bindQueue = jest
+    bindQueue = vi
         .fn()
         .mockImplementation(async function (
             _queue: string,
@@ -131,7 +132,7 @@ export class FakeChannel extends EventEmitter {
             return {};
         });
 
-    unbindQueue = jest
+    unbindQueue = vi
         .fn()
         .mockImplementation(async function (
             _queue: string,
@@ -142,7 +143,7 @@ export class FakeChannel extends EventEmitter {
             return {};
         });
 
-    assertExchange = jest
+    assertExchange = vi
         .fn()
         .mockImplementation(async function (
             exchange: string,
@@ -152,7 +153,7 @@ export class FakeChannel extends EventEmitter {
             return { exchange };
         });
 
-    bindExchange = jest
+    bindExchange = vi
         .fn()
         .mockImplementation(async function (
             _destination: string,
@@ -163,13 +164,13 @@ export class FakeChannel extends EventEmitter {
             return {};
         });
 
-    checkExchange = jest
+    checkExchange = vi
         .fn()
         .mockImplementation(async function (_exchange: string): Promise<Replies.Empty> {
             return {};
         });
 
-    deleteExchange = jest
+    deleteExchange = vi
         .fn()
         .mockImplementation(async function (
             _exchange: string,
@@ -178,7 +179,7 @@ export class FakeChannel extends EventEmitter {
             return {};
         });
 
-    unbindExchange = jest
+    unbindExchange = vi
         .fn()
         .mockImplementation(async function (
             _destination: string,
@@ -189,19 +190,19 @@ export class FakeChannel extends EventEmitter {
             return {};
         });
 
-    close = jest.fn().mockImplementation(async (): Promise<void> => {
+    close = vi.fn().mockImplementation(async (): Promise<void> => {
         this.emit('close');
     });
 
-    consume = jest.fn().mockImplementation(async (): Promise<Replies.Consume> => {
+    consume = vi.fn().mockImplementation(async (): Promise<Replies.Consume> => {
         return { consumerTag: 'abc' };
     });
 
-    prefetch = jest.fn().mockImplementation((_prefetch: number, _isGlobal: boolean): void => {});
+    prefetch = vi.fn().mockImplementation((_prefetch: number, _isGlobal: boolean): void => {});
 }
 
 export class FakeConfirmChannel extends FakeChannel {
-    publish = jest
+    publish = vi
         .fn()
         .mockImplementation(
             (
@@ -217,7 +218,7 @@ export class FakeConfirmChannel extends FakeChannel {
             }
         );
 
-    sendToQueue = jest
+    sendToQueue = vi
         .fn()
         .mockImplementation(
             (

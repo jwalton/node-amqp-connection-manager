@@ -3,8 +3,22 @@ import chai from 'chai';
 import chaiString from 'chai-string';
 import { once } from 'events';
 import * as promiseTools from 'promise-tools';
+import { afterEach, beforeEach, describe, it, vi } from 'vitest';
 import AmqpConnectionManager from '../src/AmqpConnectionManager';
 import { FakeAmqp, FakeConnection } from './fixtures';
+
+// `src` uses `import * as amqp from 'amqplib'`, which under ESM is a snapshot of
+// amqplib's exports, so spying on the default export wouldn't affect it. Make the
+// namespace's `connect` forward to the default export so `vi.spyOn()` works.
+vi.mock('amqplib', async (importOriginal) => {
+    const orig = await importOriginal<
+        typeof import('amqplib') & { default: typeof import('amqplib') }
+    >();
+    return {
+        ...orig,
+        connect: (...args: Parameters<typeof orig.connect>) => orig.default.connect(...args),
+    };
+});
 
 chai.use(chaiString);
 const { expect } = chai;
@@ -15,14 +29,14 @@ describe('AmqpConnectionManager', function () {
     let amqp: AmqpConnectionManager | undefined;
 
     beforeEach(() => {
-        jest.spyOn(origAmqp, 'connect').mockImplementation(((url: string) =>
+        vi.spyOn(origAmqp, 'connect').mockImplementation(((url: string) =>
             amqplib.connect(url)) as any);
         amqplib.reset();
     });
 
     afterEach(() => {
         amqp?.close();
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     it('should establish a connection to a broker', async () => {
@@ -169,7 +183,7 @@ describe('AmqpConnectionManager', function () {
     });
 
     it('should timeout connect', async () => {
-        jest.spyOn(origAmqp, 'connect').mockImplementation((): any => {
+        vi.spyOn(origAmqp, 'connect').mockImplementation((): any => {
             return promiseTools.delay(200);
         });
         amqp = new AmqpConnectionManager('amqp://localhost');

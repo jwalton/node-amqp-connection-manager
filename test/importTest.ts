@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { describe, it } from 'vitest';
 import amqp, { AmqpConnectionManagerClass as AmqpConnectionManager } from '../src';
 
 describe('import test', function () {

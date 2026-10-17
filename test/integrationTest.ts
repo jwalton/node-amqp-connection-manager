@@ -1,12 +1,10 @@
 import { Channel, ConfirmChannel, ConsumeMessage } from 'amqplib';
 import chai from 'chai';
-import chaiJest from 'chai-jest';
 import { once } from 'events';
 import { defer, timeout } from 'promise-tools';
+import { afterEach, describe, it } from 'vitest';
 import amqp, { AmqpConnectionManagerClass as AmqpConnectionManager } from '../src';
 import { IAmqpConnectionManager } from '../src/AmqpConnectionManager';
-
-chai.use(chaiJest);
 
 const { expect } = chai;
 
@@ -69,7 +67,7 @@ describe('Integration tests', () => {
         await timeout(once(connection, 'connect'), 3000);
     });
 
-    // This test might cause jest to complain about leaked resources due to the bug described and fixed by:
+    // This test might cause vitest to complain about leaked resources due to the bug described and fixed by:
     // https://github.com/squaremo/amqp.node/pull/584
     it('should throw on awaited connect with wrong password', async () => {
         connection = new AmqpConnectionManager('amqp://guest:wrong@localhost');
