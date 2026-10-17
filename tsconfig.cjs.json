@@ -4,6 +4,8 @@
         "declaration": false,
         "sourceMap": false,
         "module": "commonjs",
+        "moduleResolution": "node",
         "outDir": "./dist/cjs"
-    }
+    },
+    "include": ["./src/**/*"]
 }
