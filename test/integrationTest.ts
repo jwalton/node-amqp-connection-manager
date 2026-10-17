@@ -1,5 +1,5 @@
 import { Channel, ConfirmChannel, ConsumeMessage } from 'amqplib';
-import chai from 'chai';
+import * as chai from 'chai';
 import { once } from 'events';
 import { defer, timeout } from 'promise-tools';
 import { afterEach, describe, it } from 'vitest';

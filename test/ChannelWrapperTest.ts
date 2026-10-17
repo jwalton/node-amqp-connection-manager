@@ -2,13 +2,11 @@
 
 import * as amqplib from 'amqplib';
 import chaiAsPromised from 'chai-as-promised';
-import chaiString from 'chai-string';
 import * as promiseTools from 'promise-tools';
 import { beforeEach, chai, describe, expect, it, Mock, vi } from 'vitest';
 import ChannelWrapper, { SetupFunc } from '../src/ChannelWrapper';
 import * as fixtures from './fixtures';
 
-chai.use(chaiString);
 chai.use(chaiAsPromised);
 function makeMessage(content: string): amqplib.Message {
     return {

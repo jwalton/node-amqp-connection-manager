@@ -1,6 +1,5 @@
 import origAmqp from 'amqplib';
-import chai from 'chai';
-import chaiString from 'chai-string';
+import * as chai from 'chai';
 import { once } from 'events';
 import * as promiseTools from 'promise-tools';
 import { afterEach, beforeEach, describe, it, vi } from 'vitest';
@@ -20,7 +19,6 @@ vi.mock('amqplib', async (importOriginal) => {
     };
 });
 
-chai.use(chaiString);
 const { expect } = chai;
 
 const amqplib = new FakeAmqp();
@@ -234,7 +232,8 @@ describe('AmqpConnectionManager', function () {
         if (typeof url !== 'string') {
             throw new Error('url is not a string');
         }
-        expect((connection as any).url, 'connection.url').to.startWith(url);
+        const connectionUrl = (connection as { url: string }).url;
+        expect(connectionUrl.startsWith(url), 'connection.url').to.be.true;
     });
 
     it('should reconnect to the broker if the broker disconnects', async () => {
