@@ -2,7 +2,6 @@
 
 [![NPM version](https://badge.fury.io/js/amqp-connection-manager.svg)](https://npmjs.org/package/amqp-connection-manager)
 ![Build Status](https://github.com/jwalton/node-amqp-connection-manager/workflows/GitHub%20CI/badge.svg)
-[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 Connection management for amqplib. This is a wrapper around [amqplib](http://www.squaremobius.net/amqp.node/) which provides automatic reconnects.
 
