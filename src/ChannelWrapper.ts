@@ -2,7 +2,7 @@ import type * as amqplib from 'amqplib';
 import { Options } from 'amqplib';
 import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
-import pb from 'promise-breaker';
+import * as pb from 'promise-breaker';
 import { promisify } from 'util';
 import { IAmqpConnectionManager } from './AmqpConnectionManager.js';
 import TypedEventEmitter from 'typed-emitter';
@@ -13,11 +13,14 @@ const randomBytes = promisify(crypto.randomBytes);
 
 export type Channel = amqplib.ConfirmChannel | amqplib.Channel;
 
-export type SetupFunc =
+export type AsyncSetupFunc =
+    ((channel: Channel) => Promise<void>) | ((channel: amqplib.ConfirmChannel) => Promise<void>);
+
+export type CbSetupFunc =
     | ((channel: Channel, callback: (error?: Error) => void) => void)
-    | ((channel: Channel) => Promise<void>)
-    | ((channel: amqplib.ConfirmChannel, callback: (error?: Error) => void) => void)
-    | ((channel: amqplib.ConfirmChannel) => Promise<void>);
+    | ((channel: amqplib.ConfirmChannel, callback: (error?: Error) => void) => void);
+
+export type SetupFunc = AsyncSetupFunc | CbSetupFunc;
 
 export interface CreateChannelOpts {
     /**  Name for this channel. Used for debugging. */
@@ -189,15 +192,15 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
      * @param [done] - callback.
      * @returns - Resolves when complete.
      */
-    addSetup(setup: SetupFunc, done?: pb.Callback<void>): Promise<void> {
+    addSetup(setup: SetupFunc): Promise<void>;
+    addSetup(setup: SetupFunc, done: pb.Callback<void>): void;
+    addSetup(setup: SetupFunc, done?: pb.Callback<void>): Promise<void> | undefined {
         return pb.addCallback(
             done,
-            (this._settingUp || Promise.resolve()).then(() => {
+            (this._settingUp || Promise.resolve()).then(async () => {
                 this._setups.push(setup);
                 if (this._channel) {
-                    return pb.call(setup, this, this._channel);
-                } else {
-                    return undefined;
+                    await this._callSetup(setup, this._channel);
                 }
             })
         );
@@ -214,12 +217,18 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
      * @param {function} [done] - Optional callback.
      * @returns {void | Promise} - Resolves when complete.
      */
-    removeSetup(setup: SetupFunc, teardown?: SetupFunc, done?: pb.Callback<void>): Promise<void> {
+    removeSetup(setup: SetupFunc, teardown?: SetupFunc): Promise<void>;
+    removeSetup(setup: SetupFunc, teardown: SetupFunc | undefined, done: pb.Callback<void>): void;
+    removeSetup(
+        setup: SetupFunc,
+        teardown?: SetupFunc,
+        done?: pb.Callback<void>
+    ): Promise<void> | undefined {
         return pb.addCallback(done, () => {
             this._setups = this._setups.filter((s) => s !== setup);
 
             return (this._settingUp || Promise.resolve()).then(() =>
-                this._channel && teardown ? pb.call(teardown, this, this._channel) : undefined
+                this._channel && teardown ? this._callSetup(teardown, this._channel) : undefined
             );
         });
     }
@@ -231,7 +240,9 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
      * @param [done] - Optional callback.
      * @returns - Resolves when connected.
      */
-    waitForConnect(done?: pb.Callback<void>): Promise<void> {
+    waitForConnect(): Promise<void>;
+    waitForConnect(done: pb.Callback<void>): void;
+    waitForConnect(done?: pb.Callback<void>): Promise<void> | undefined {
         return pb.addCallback(
             done,
             this._channel && !this._settingUp
@@ -255,9 +266,22 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
         exchange: string,
         routingKey: string,
         content: Buffer | string | unknown,
+        options?: PublishOptions
+    ): Promise<boolean>;
+    publish(
+        exchange: string,
+        routingKey: string,
+        content: Buffer | string | unknown,
+        options: PublishOptions | undefined,
+        done: pb.Callback<boolean>
+    ): void;
+    publish(
+        exchange: string,
+        routingKey: string,
+        content: Buffer | string | unknown,
         options?: PublishOptions,
         done?: pb.Callback<boolean>
-    ): Promise<boolean> {
+    ): Promise<boolean> | undefined {
         return pb.addCallback(
             done,
             new Promise<boolean>((resolve, reject) => {
@@ -292,9 +316,20 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
     sendToQueue(
         queue: string,
         content: Buffer | string | unknown,
+        options?: PublishOptions
+    ): Promise<boolean>;
+    sendToQueue(
+        queue: string,
+        content: Buffer | string | unknown,
+        options: PublishOptions | undefined,
+        done: pb.Callback<boolean>
+    ): void;
+    sendToQueue(
+        queue: string,
+        content: Buffer | string | unknown,
         options?: PublishOptions,
         done?: pb.Callback<boolean>
-    ): Promise<boolean> {
+    ): Promise<boolean> | undefined {
         const encodedContent = this._getEncodedMessage(content);
 
         return pb.addCallback(
@@ -398,7 +433,7 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
             this._settingUp = Promise.all(
                 this._setups.map((setupFn) =>
                     // TODO: Use a timeout here to guard against setupFns that never resolve?
-                    pb.call(setupFn, this, channel).catch((err) => {
+                    this._callSetup(setupFn, channel).catch((err) => {
                         if (err.name === 'IllegalOperationError') {
                             // Don't emit an error if setups failed because the channel closed.
                             return;
@@ -427,6 +462,25 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
             this.emit('error', err, { name: this.name });
             this._settingUp = undefined;
             this._channel = undefined;
+        }
+    }
+
+    private async _callSetup(
+        setup: SetupFunc,
+        channel: Channel | amqplib.ConfirmChannel
+    ): Promise<void> {
+        if (setup.length === 2) {
+            await new Promise((resolve, reject) => {
+                (setup as CbSetupFunc).call(this, channel as amqplib.ConfirmChannel, (err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(undefined);
+                    }
+                });
+            });
+        } else {
+            await (setup as AsyncSetupFunc).call(this, channel as amqplib.ConfirmChannel);
         }
     }
 

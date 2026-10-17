@@ -1,7 +1,6 @@
 import * as amqp from 'amqplib';
 import { EventEmitter, once } from 'events';
 import { TcpSocketConnectOpts } from 'net';
-import pb from 'promise-breaker';
 import { ConnectionOptions } from 'tls';
 import { URL } from 'url';
 import ChannelWrapper, { CreateChannelOpts } from './ChannelWrapper.js';
@@ -317,7 +316,13 @@ export default class AmqpConnectionManager
             .then(() => {
                 if (!this._urls || this._currentUrl >= this._urls.length) {
                     this._currentUrl = 0;
-                    return pb.call(this._findServers, 0, null);
+
+                    return new Promise<ConnectionUrl | ConnectionUrl[]>((resolve, reject) => {
+                        const p = this._findServers(resolve);
+                        if (p) {
+                            p.then(resolve, reject);
+                        }
+                    });
                 } else {
                     return this._urls;
                 }
