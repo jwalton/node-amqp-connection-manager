@@ -1,8 +1,47 @@
 version: 2
+
 updates:
-- package-ecosystem: npm
-  directory: "/"
-  schedule:
-    interval: daily
-    time: "10:00"
-  open-pull-requests-limit: 10
+  # npm dependencies
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/New_York'
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+      - 'automated'
+    groups:
+      # Group just for typescript.  Right now typescript v7 breaks eslint and other
+      # tooling, so we don't want to upgrade it just yet.
+      typescript:
+        patterns:
+          - typescript
+      dev-dependencies:
+        dependency-type: 'development'
+        exclude-patterns:
+          # Upgrade types along with their associated libraries in production group.
+          - '@types/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      production-dependencies:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/New_York'
+    # Group all actions updates into a single PR.
+    groups:
+      actions:
+        patterns:
+          - '*'
