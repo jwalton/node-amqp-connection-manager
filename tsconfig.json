@@ -4,10 +4,12 @@
         "target": "es2018",
         "module": "esnext",
         "lib": ["es2018"],
+        "types": ["node"],
         "allowJs": false,
         // "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
         "declaration": false,
         "sourceMap": true,
+        "rootDir": ".",
         "outDir": "./dist/esm",
         "stripInternal": true,
 

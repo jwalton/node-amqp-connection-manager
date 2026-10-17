@@ -4,7 +4,8 @@
         "declaration": false,
         "sourceMap": false,
         "module": "commonjs",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
+        "rootDir": "./src",
         "outDir": "./dist/cjs"
     },
     "include": ["./src/**/*"]
