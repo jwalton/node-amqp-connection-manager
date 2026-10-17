@@ -18,7 +18,7 @@
     ],
     "dependencies": {
         "@types/chai-as-promised": "^8.0.2",
-        "promise-breaker": "^6.0.0",
+        "promise-breaker": "^7.0.0",
         "typed-emitter": "^2.1.0"
     },
     "peerDependencies": {
