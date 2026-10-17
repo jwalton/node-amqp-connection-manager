@@ -83,7 +83,7 @@ export type ConnectionManagerEvents = {
     connectFailed: ConnectFailedListener;
     blocked: (arg: { reason: string }) => void;
     unblocked: () => void;
-    disconnect: (arg: { err: Error & { code?: number } }) => void;
+    disconnect: (arg: { err?: Error & { code?: number } }) => void;
     error: (err: Error) => void;
 };
 
@@ -385,7 +385,7 @@ export default class AmqpConnectionManager
                     // Reconnect if the connection closes
                     connection.on('close', (err) => {
                         this._currentConnection = undefined;
-                        this.emit('disconnect', { err });
+                        this.emit('disconnect', { err: err });
 
                         const handle = wait(this.reconnectTimeInSeconds * 1000);
                         this._cancelRetriesHandler = handle.cancel;

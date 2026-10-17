@@ -97,7 +97,7 @@ const IRRECOVERABLE_ERRORS = [
     541, // AMQP Internal Error.
 ];
 
-type ChannelWrapperEvents = {
+export type ChannelWrapperEvents = {
     connect: () => void;
     error: (err: unknown, info: { name: string | undefined }) => void;
     close: () => void;
@@ -445,7 +445,7 @@ export default class ChannelWrapper extends (EventEmitter as new () => TypedEven
     }
 
     // Called whenever we disconnect from the AMQP server.
-    private _onDisconnect(ex: { err: Error & { code?: number } }): void {
+    private _onDisconnect(ex: { err?: Error & { code?: number } }): void {
         this._irrecoverableCode = ex.err instanceof Error ? ex.err.code : undefined;
         this._channel = undefined;
         this._settingUp = undefined;
